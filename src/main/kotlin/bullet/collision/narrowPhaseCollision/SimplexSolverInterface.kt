@@ -1,0 +1,3 @@
+package bullet.collision.narrowPhaseCollision
+
+typealias SimplexSolverInterface = VoronoiSimplexSolver
