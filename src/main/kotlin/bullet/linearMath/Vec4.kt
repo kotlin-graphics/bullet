@@ -27,10 +27,7 @@ class Vec4 : Vec3 {
             maxIndex = 2
             maxVal = z
         }
-        if (w > maxVal) {
-            maxIndex = 3
-            maxVal = w
-        }
+        if (w > maxVal) maxIndex = 3
         return maxIndex
     }
 
@@ -49,16 +46,13 @@ class Vec4 : Vec3 {
             minIndex = 2
             minVal = z
         }
-        if (w < minVal) {
-            minIndex = 3
-            minVal = w
-        }
+        if (w < minVal) minIndex = 3
         return minIndex
     }
 
     fun closestAxis4() = absolute4().maxAxis4()
 
-    fun put(x:Float, y:Float, z: Float, w: Float) {
+    fun put(x: Float, y: Float, z: Float, w: Float) {
         this.x = x
         this.y = y
         this.z = z

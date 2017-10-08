@@ -51,3 +51,5 @@ val Float.Companion.EPSILON get() = 1.192092896e-07F
 //#define LDBL_TRUE_MIN    DBL_TRUE_MIN            // min positive value
 //
 //#define DECIMAL_DIG      DBL_DECIMAL_DIG
+
+val Boolean.i get() = if (this) 1 else 0

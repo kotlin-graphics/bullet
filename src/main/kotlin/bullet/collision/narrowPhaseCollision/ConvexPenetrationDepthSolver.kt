@@ -1,7 +1,5 @@
 package bullet.collision.narrowPhaseCollision
 
-class ConvexShape
-
 /** ConvexPenetrationDepthSolver provides an interface for penetration depth calculation.   */
 interface ConvexPenetrationDepthSolver {
 

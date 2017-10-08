@@ -35,12 +35,52 @@ open class Vec3 {
         w = v.w
     }
 
+    operator fun get(index: Int) = when (index) {
+        0 -> x
+        1 -> y
+        2 -> z
+        3 -> w
+        else -> throw Error()
+    }
+
+    operator fun unaryMinus() = Vec3(-x, -y, -z)
     operator fun plus(v: Vec3) = Vec3(x + v.x, y + v.y, z + v.z)
     operator fun minus(v: Vec3) = Vec3(x - v.x, y - v.y, z - v.z)
     operator fun times(v: Vec3) = Vec3(x * v.x, y * v.y, z * v.z)
     operator fun times(f: Float) = Vec3(x * f, y * f, z * f)
     operator fun div(v: Vec3) = Vec3(x / v.x, y / v.y, z / v.z)
     operator fun div(v: Float) = Vec3(x / v, y / v, z / v)
+
+    operator fun plusAssign(v: Vec3) {
+        x += v.x
+        y += v.y
+        z += v.z
+    }
+    operator fun minusAssign(v: Vec3) {
+        x -= v.x
+        y -= v.y
+        z -= v.z
+    }
+    operator fun timesAssign(v: Vec3) {
+        x *= v.x
+        y *= v.y
+        z *= v.z
+    }
+    operator fun timesAssign(f: Float) {
+        x *= f
+        y *= f
+        z *= f
+    }
+    operator fun divAssign(v: Vec3) {
+        x /= v.x
+        y /= v.y
+        z /= v.z
+    }
+    operator fun divAssign(v: Float) {
+        x /= v
+        y /= v
+        z /= v
+    }
 
     infix fun dot(v: Vec3) = x * v.x + y * v.y + z * v.z
 
@@ -78,16 +118,18 @@ open class Vec3 {
         return this
     }
 
-    /**@brief Normalize this vector
+    /** Normalize this vector
      * x^2 + y^2 + z^2 = 1 */
-//    fun normalize():Vec3 {
-//        assert(!fuzzyZero())
-//        val s = 1/length()
-//        x *= s
-//        y *= s
-//        z *= s
-//        return this
-//    }
+    fun normalize(): Vec3 {
+        assert(!fuzzyZero())
+        val s = 1 / length()
+        x *= s
+        y *= s
+        z *= s
+        return this
+    }
+
+    fun normalized() = Vec3(this).normalize()
 
     /**@return a rotated version of this vector
      * @param wAxis The axis to rotate about
@@ -171,7 +213,7 @@ open class Vec3 {
 
     val isZero get() = x == 0f && y == 0f && z == 0f
 
-    fun funnyZero() = length2() < Float.EPSILON * Float.EPSILON
+    fun fuzzyZero() = length2() < Float.EPSILON * Float.EPSILON
 
     /** @returns index of maximum dot product between this and vectors in array[]
      *  @param array The other vectors

@@ -1,5 +1,8 @@
 package bullet.collision.collisionDispatch
 
+import bullet.collision.narrowPhaseCollision.ConvexPenetrationDepthSolver
+import bullet.collision.narrowPhaseCollision.GjkEpaPenetrationDepthSolver
+
 class DefaultCollisionConstructionInfo {
     // TODO    btPoolAllocator*	m_persistentManifoldPool;
 //    btPoolAllocator*	m_collisionAlgorithmPool;
@@ -27,7 +30,14 @@ class DefaultCollisionConfiguration(
     private var ownsCollisionAlgorithmPool = false
 
     /** default penetration depth solver    */
-    btConvexPenetrationDepthSolver*	m_pdSolver;
+    private var pdSolver: ConvexPenetrationDepthSolver
+
+    init {
+        pdSolver = if(constructionInfo.useEpaPenetrationAlgorithm)
+            GjkEpaPenetrationDepthSolver()
+        else
+
+    }
 
     //default CreationFunctions, filling the m_doubleDispatch table
     private var convexConvexCreateFunc: CollisionAlgorithmCreateFunc
