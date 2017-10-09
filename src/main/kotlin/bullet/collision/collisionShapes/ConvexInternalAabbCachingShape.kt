@@ -5,7 +5,7 @@ import bullet.linearMath.Vec3
 import bullet.linearMath.transformAabb
 
 /** ConvexInternalAabbCachingShape adds local aabb caching for convex shapes, to avoid expensive bounding box calculations    */
-class ConvexInternalAabbCachingShape : ConvexInternalShape() {
+abstract class ConvexInternalAabbCachingShape : ConvexInternalShape() {
 
     var localAabbMin = Vec3()
     var localAabbMax = Vec3()

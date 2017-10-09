@@ -2,6 +2,7 @@ package bullet.collision
 
 import bullet.f
 import bullet.linearMath.Vec3
+import bullet.linearMath.times
 import io.kotlintest.matchers.shouldBe
 import io.kotlintest.specs.StringSpec
 import kotlin.math.abs

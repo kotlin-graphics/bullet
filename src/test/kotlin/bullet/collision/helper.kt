@@ -1,7 +1,13 @@
 package bullet.collision
 
 import bullet.EPSILON
+import bullet.collision.collisionShapes.ConvexShape
+import bullet.collision.collisionShapes.MultiSphereShape
 import bullet.collision.collisionShapes.SphereShape
+import bullet.collision.Collision.SphereSphereTestMethod as SSTM
+import bullet.collision.narrowPhaseCollision.GjkCollisionDescription
+import bullet.collision.narrowPhaseCollision.VoronoiSimplexSolver
+import bullet.collision.narrowPhaseCollision.computeGjkEpaPenetration
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 import bullet.linearMath.times
@@ -49,71 +55,72 @@ fun computeGjkEpaSphereSphereCollision(input: SphereSphereCollisionDescription, 
                                        method: Collision.SphereSphereTestMethod): Int {
     //  for spheres it is best to use a 'point' and set the margin to the radius (which is what btSphereShape does)
     val singleSphereA = SphereShape(input.radiusA)
-    btSphereShape singleSphereB (input.m_radiusB);
-    btVector3 org (0, 0, 0);
-    btScalar radA = input . m_radiusA;
-    btScalar radB = input . m_radiusB;
+    val singleSphereB = SphereShape(input.radiusB)
+    val org = Vec3()
+    val radA = input.radiusA
+    val radB = input.radiusB
 
-    ConvexWrap a, b;
-    a.m_worldTrans = input.m_sphereTransformA;
-    b.m_worldTrans = input.m_sphereTransformB;;
+    val a = ConvexWrap()
+    val b = ConvexWrap()
+    a.worldTrans = input.sphereTransformA
+    b.worldTrans = input.sphereTransformB
 
-    btMultiSphereShape multiSphereA (&org, &radA, 1);
-    btMultiSphereShape multiSphereB (&org, &radB, 1);
+    val multiSphereA = MultiSphereShape(org, radA, 1)
+    val multiSphereB = MultiSphereShape(org, radB, 1)
 
-    btGjkCollisionDescription colDesc;
-    switch(method)
-    {
-        case SSTM_GJKEPA_RADIUS_NOT_FULL_MARGIN :
-        {
-
-            a.m_convex = & multiSphereA;
-            b.m_convex = & multiSphereB;
-            break;
+    val colDesc = GjkCollisionDescription()
+    when (method) {
+        SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN -> {
+            a.convex = multiSphereA
+            b.convex = multiSphereB
         }
-        default:
-        {
-            a.m_convex = & singleSphereA;
-            b.m_convex = & singleSphereB;
+        else -> {
+            a.convex = singleSphereA
+            b.convex = singleSphereB
         }
-    };
+    }
 
-    btVoronoiSimplexSolver simplexSolver;
-    simplexSolver.reset();
+    val simplexSolver = VoronoiSimplexSolver()
+    simplexSolver.reset()
 
-    int res = - 1;
+    var res = -1
     ///todo(erwincoumans): improve convex-convex quality and performance
     ///also compare with https://code.google.com/p/bullet/source/browse/branches/PhysicsEffects/src/base_level/collision/pfx_gjk_solver.cpp
-    switch(method)
-    {
-        case SSTM_GJKEPA_RADIUS_NOT_FULL_MARGIN :
-        case SSTM_GJKEPA :
-        {
-            res = btComputeGjkEpaPenetration(a, b, colDesc, simplexSolver, distInfo);
-            break;
-        }
+    when (method) {
+        SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN, SSTM.GJKEPA -> res = computeGjkEpaPenetration(a, b, colDesc, simplexSolver, distInfo)
         case SSTM_GJKMPR :
         {
-            res = btComputeGjkDistance(a, b, colDesc, distInfo);
+            res = btComputeGjkDistance(a, b, colDesc, distInfo)
             if (res == 0) {
                 //   printf("use GJK results in distance %f\n",distInfo->m_distance);
-                return res;
+                return res
             } else {
-                btMprCollisionDescription mprDesc;
-                res = btComputeMprPenetration(a, b, mprDesc, distInfo);
+                btMprCollisionDescription mprDesc
+                        res = btComputeMprPenetration(a, b, mprDesc, distInfo)
 
 //                if (res==0)
 //                {
 //                    printf("use MPR results in distance %f\n",distInfo->m_distance);
 //                }
             }
-            break;
+            break
         }
-        default:
+                default :
         {
 
-            btAssert(0);
+            btAssert(0)
         }
     }
-    return res;
+    return res
+}
+
+class ConvexWrap {
+
+    lateinit var convex: ConvexShape
+    lateinit var worldTrans: Transform
+
+    val margin get() = convex.margin
+    val objectCenterInWorld get() = worldTrans.origin
+    fun getLocalSupportWithMargin(dir: Vec3) = convex.localGetSupportingVertex(dir)
+    fun getLocalSupportWithoutMargin(dir: Vec3) = convex.localGetSupportingVertexWithoutMargin(dir)
 }

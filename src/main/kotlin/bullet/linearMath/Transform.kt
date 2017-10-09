@@ -96,7 +96,7 @@ class Transform {
     /** Return the inverse of this transform times the other transform
      *  @param t The other transform
      *  return this.inverse() * the other */
-    fun inverseTimes(t: Transform): Transform {
+    infix fun inverseTimes(t: Transform): Transform {
         val v = t.origin - origin
         return Transform(basis transposeTimes t.basis, v * basis)
     }
