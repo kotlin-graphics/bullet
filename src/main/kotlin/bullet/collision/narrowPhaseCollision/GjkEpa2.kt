@@ -7,6 +7,7 @@ import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 import bullet.linearMath.max
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 object GjkEpaSolver2 {
 
@@ -308,46 +309,41 @@ object GjkEpaSolver2 {
                 val n = dl[0] cross dl[1]
                 val l = n.length2()
                 if (l > GJK_SIMPLEX3_EPS) {
-                    val mindist = -1f
+                    var mindist = -1f
                     val subw = FloatArray(2)
                     var subm = 0
                     for (i in 0..2) {
-                        if (btDot(*vt[i], btCross(dl[i], n)) > 0) {
-                            const U j = imd3[i]
-                            const btScalar subd(projectorigin(*vt[i], *vt[j], subw, subm))
+                        if (vt[i] dot (dl[i] cross n) > 0) {
+                            val j = imd3[i]
+                            val p = intArrayOf(subm)
+                            val subd = projectOrigin(vt[i], vt[j], subw, p)
+                            subm = p[0]
                             if ((mindist < 0) || (subd < mindist)) {
                                 mindist = subd
-                                m = static_cast<U>(((subm&1)?1<<i:0)+((subm&2)?1<<j:0))
+                                m[0] = (if (subm has 1) 1 shl i else 0) + if (subm has 2) 1 shl j else 0
                                 w[i] = subw[0]
                                 w[j] = subw[1]
-                                w[imd3[j]] = 0
+                                w[imd3[j]] = 0f
                             }
                         }
                     }
                     if (mindist < 0) {
-                        const btScalar d = btDot(a, n)
-                        const btScalar s = btSqrt(l)
-                        const btVector3 p = n * (d / l)
+                        val d = a dot n
+                        val s = sqrt(l)
+                        val p = n * (d / l)
                         mindist = p.length2()
-                        m = 7
-                        w[0] = (btCross(dl[1], b - p)).length() / s
-                        w[1] = (btCross(dl[2], c - p)).length() / s
+                        m[0] = 7
+                        w[0] = (dl[1] cross (b - p)).length() / s
+                        w[1] = (dl[2] cross (c - p)).length() / s
                         w[2] = 1 - (w[0] + w[1])
                     }
                     return (mindist)
                 }
-                return (-1)
+                return -1f
             }
         }
 
-
-
-        static btScalar        projectorigin(    const btVector3& a,
-        const btVector3& b,
-        const btVector3& c,
-        const btVector3& d,
-        btScalar* w,U& m)
-        {
+        fun projectOrigin(a: Vec3, b: Vec3, c: Vec3, d: Vec3, w: FloatArray, m: IntArray): Float {
             static const U imd3 [] = { 1, 2, 0 }
             const btVector3 * vt [] = { &a, &b, &c, &d }
             const btVector3 dl[] = { a - d, b-d, c-d }
