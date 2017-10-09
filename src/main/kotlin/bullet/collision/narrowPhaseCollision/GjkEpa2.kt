@@ -1,9 +1,12 @@
 package bullet.collision.narrowPhaseCollision
 
 import bullet.collision.collisionShapes.ConvexShape
+import bullet.has
 import bullet.linearMath.Mat3
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
+import bullet.linearMath.max
+import kotlin.math.abs
 
 object GjkEpaSolver2 {
 
@@ -25,6 +28,31 @@ object GjkEpaSolver2 {
         val normal = Vec3()
         var distance = 0f
     }
+
+    // Config
+
+    /* GJK	*/
+    val GJK_MAX_ITERATIONS = 128
+
+    val GJK_ACCURACY = 0.0001f
+    val GJK_MIN_DISTANCE = 0.0001f
+    val GJK_DUPLICATED_EPS = 0.0001f
+
+
+    val GJK_SIMPLEX2_EPS = 0f
+    val GJK_SIMPLEX3_EPS = 0f
+    val GJK_SIMPLEX4_EPS = 0f
+
+    /* EPA	*/
+    val EPA_MAX_VERTICES = 128
+    val EPA_MAX_ITERATIONS = 255
+
+    val EPA_ACCURACY = 0.0001f
+    val EPA_PLANE_EPS = 0.00001f
+    val EPA_INSIDE_EPS = 0.01f
+
+    val EPA_FALLBACK = 10 * EPA_ACCURACY
+    val EPA_MAX_FACES = EPA_MAX_VERTICES * 2
 
     class MinkowskiDiff {
         lateinit var shapes: Array<ConvexShape>
@@ -74,7 +102,7 @@ object GjkEpaSolver2 {
         val free = Array(4, { SV() })
         var nfree = 0
         var current = 0
-        val simplex = Simplex()
+        var simplex = Simplex()
         var status = Status.Failed
 
         /* Methods		*/
@@ -116,233 +144,204 @@ object GjkEpaSolver2 {
             lastw[3] = Vec3(ray)
             /* Loop						*/
             do {
-                const U next = 1 - m_current
-                sSimplex&    cs = m_simplices[m_current]
-                sSimplex&    ns = m_simplices[next]
+                val next = 1 - current
+                val cs = simplices[current]
+                val ns = simplices[next]
                 /* Check zero							*/
-                const btScalar rl = m_ray.length()
+                val rl = ray.length()
                 if (rl < GJK_MIN_DISTANCE) {/* Touching or inside				*/
-                    m_status = eStatus::Inside
+                    status = Status.Inside
                     break
                 }
                 /* Append new vertice in -'v' direction	*/
-                appendvertice(cs, -m_ray)
-                const btVector3 & w = cs . c [cs.rank - 1]->w
-                bool found =false
-                for (U i = 0;i < 4;++i)
-                {
+                appendVertice(cs, -ray)
+                val w = cs.c[cs.rank - 1].w
+                var found = false
+                for (i in 0..3)
                     if ((w - lastw[i]).length2() < GJK_DUPLICATED_EPS) {
-                        found = true;break; }
-                }
+                        found = true
+                        break
+                    }
                 if (found) {/* Return old simplex				*/
-                    removevertice(m_simplices[m_current])
+                    removeVertice(simplices[current])
                     break
                 } else {/* Update lastw					*/
-                    lastw[clastw = (clastw + 1)&3] = w
+                    clastw = (clastw + 1) and 3
+                    lastw[clastw] = w
                 }
                 /* Check for termination				*/
-                const btScalar omega = btDot(m_ray, w) / rl
-                alpha = btMax(omega, alpha)
-                if (((rl - alpha) - (GJK_ACCURACY * rl)) <= 0) {/* Return old simplex				*/
-                    removevertice(m_simplices[m_current])
+                val omega = (ray dot w) / rl
+                alpha = omega max alpha
+                if (rl - alpha - GJK_ACCURACY * rl <= 0) {/* Return old simplex				*/
+                    removeVertice(simplices[current])
                     break
                 }
                 /* Reduce simplex						*/
-                btScalar weights [4]
-                U mask =0
-                switch(cs.rank)
-                {
-                    case    2:    sqdist = projectorigin(cs.c[0]->w,
-                    cs.c[1]->w,
-                    weights, mask);break
-                    case    3:    sqdist = projectorigin(cs.c[0]->w,
-                    cs.c[1]->w,
-                    cs.c[2]->w,
-                    weights, mask);break
-                    case    4:    sqdist = projectorigin(cs.c[0]->w,
-                    cs.c[1]->w,
-                    cs.c[2]->w,
-                    cs.c[3]->w,
-                    weights, mask);break
+                val weights = FloatArray(4)
+                var mask = 0
+                when (cs.rank) {
+                    2 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, weights, mask)
+                    3 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, weights, mask)
+                    4 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, cs.c[3].w, weights, mask)
                 }
                 if (sqdist >= 0) {/* Valid	*/
                     ns.rank = 0
-                    m_ray = btVector3(0, 0, 0)
-                    m_current = next
-                    for (U i = 0, ni = cs.rank;i < ni;++i)
-                    {
-                        if (mask&(1<<i))
-                        {
+                    ray put 0f
+                    current = next
+                    for (i in 0 until cs.rank)
+                        if (mask has (1 shl i)) {
                             ns.c[ns.rank] = cs.c[i]
                             ns.p[ns.rank++] = weights[i]
-                            m_ray += cs.c[i]->w*weights[i]
-                        }
-                        else
-                        {
-                            m_free[m_nfree++] = cs.c[i]
-                        }
-                    }
-                    if (mask == 15) m_status = eStatus::Inside
+                            ray += cs.c[i].w * weights[i]
+                        } else
+                            free[nfree++] = cs.c[i]
+                    if (mask == 15) status = Status.Inside
                 } else {/* Return old simplex				*/
-                    removevertice(m_simplices[m_current])
+                    removeVertice(simplices[current])
                     break
                 }
-                m_status = ((++iterations) < GJK_MAX_ITERATIONS)?m_status:eStatus::Failed
-            } while (m_status == eStatus::Valid)
-            m_simplex = & m_simplices [m_current]
-            switch(m_status)
-            {
-                case eStatus ::Valid:        m_distance = m_ray.length();break
-                case eStatus ::Inside:    m_distance = 0;break
-                default:
-                {
-                }
+                status = if (++iterations < GJK_MAX_ITERATIONS) status else Status.Failed
+            } while (status == Status.Valid)
+            simplex = simplices[current]
+            when (status) {
+                Status.Valid -> distance = ray.length()
+                Status.Inside -> distance = 0f
+                else -> Unit
             }
-            return (m_status)
+            return (status)
         }
-        bool                    EncloseOrigin()
-        {
-            switch(m_simplex->rank)
-            {
-                case    1:
-                {
-                    for (U i = 0;i < 3;++i)
-                    {
-                        btVector3 axis = btVector3 (0, 0, 0)
-                        axis[i] = 1
-                        appendvertice(*m_simplex, axis)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
-                        appendvertice(*m_simplex, -axis)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
+
+        fun encloseOrigin(): Boolean {
+            when (simplex.rank) {
+                1 -> {
+                    for (i in 0..2) {
+                        val axis = Vec3()
+                        axis[i] = 1f
+                        appendVertice(simplex, axis)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
+                        appendVertice(simplex, -axis)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
                     }
                 }
-                break
-                case    2:
-                {
-                    const btVector3 d = m_simplex->c[1]->w-m_simplex->c[0]->w
-                    for (U i = 0;i < 3;++i)
-                    {
-                        btVector3 axis = btVector3 (0, 0, 0)
-                        axis[i] = 1
-                        const btVector3 p = btCross(d, axis)
+                2 -> {
+                    val d = simplex.c[1].w - simplex.c[0].w
+                    for (i in 0..2) {
+                        val axis = Vec3()
+                        axis[i] = 1f
+                        val p = d cross axis
                         if (p.length2() > 0) {
-                            appendvertice(*m_simplex, p)
-                            if (EncloseOrigin()) return (true)
-                            removevertice(*m_simplex)
-                            appendvertice(*m_simplex, -p)
-                            if (EncloseOrigin()) return (true)
-                            removevertice(*m_simplex)
+                            appendVertice(simplex, p)
+                            if (encloseOrigin()) return true
+                            removeVertice(simplex)
+                            appendVertice(simplex, -p)
+                            if (encloseOrigin()) return (true)
+                            removeVertice(simplex)
                         }
                     }
                 }
-                break
-                case    3:
-                {
-                    const btVector3 n = btCross(m_simplex->c[1]->w-m_simplex->c[0]->w,
-                    m_simplex->c[2]->w-m_simplex->c[0]->w)
+                3 -> {
+                    val n = (simplex.c[1].w - simplex.c[0].w) cross (simplex.c[2].w - simplex.c[0].w)
                     if (n.length2() > 0) {
-                        appendvertice(*m_simplex, n)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
-                        appendvertice(*m_simplex, -n)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
+                        appendVertice(simplex, n)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
+                        appendVertice(simplex, -n)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
                     }
                 }
-                break
-                case    4:
-                {
-                    if (btFabs(det(m_simplex->c[0]->w-m_simplex->c[3]->w,
-                    m_simplex->c[1]->w-m_simplex->c[3]->w,
-                    m_simplex->c[2]->w-m_simplex->c[3]->w))>0)
-                    return (true)
+                4 -> {
+                    if (abs(det(simplex.c[0].w - simplex.c[3].w,
+                            simplex.c[1].w - simplex.c[3].w,
+                            simplex.c[2].w - simplex.c[3].w)) > 0)
+                        return true
                 }
-                break
             }
-            return (false)
+            return false
         }
+
         /* Internals	*/
-        void                getsupport(const btVector3& d,sSV& sv)
-        const
-        {
-            sv.d = d / d.length()
-            sv.w = m_shape.Support(sv.d)
+        private fun getSupport(d: Vec3, sv: SV) {
+            sv.d put d / d.length()
+            sv.w put shape.support(sv.d)
         }
-        void                removevertice(sSimplex& simplex)
-        {
-            m_free[m_nfree++] = simplex.c[--simplex.rank]
+
+        private fun removeVertice(simplex: Simplex) = free.set(nfree++, simplex.c[--simplex.rank])
+        private fun appendVertice(simplex: Simplex, v: Vec3) {
+            simplex.p[simplex.rank] = 0f
+            simplex.c[simplex.rank] = free[--nfree]
+            getSupport(v, simplex.c[simplex.rank++])
         }
-        void                appendvertice(sSimplex& simplex,const btVector3& v)
-        {
-            simplex.p[simplex.rank] = 0
-            simplex.c[simplex.rank] = m_free[--m_nfree]
-            getsupport(v, *simplex.c[simplex.rank++])
-        }
-        static btScalar        det(const btVector3& a,const btVector3& b,const btVector3& c)
-        {
-            return (a.y() * b.z() * c.x() + a.z() * b.x() * c.y() -
-                    a.x() * b.z() * c.y() - a.y() * b.x() * c.z() +
-                    a.x() * b.y() * c.z() - a.z() * b.y() * c.x())
-        }
-        static btScalar        projectorigin(    const btVector3& a,
-        const btVector3& b,
-        btScalar* w,U& m)
-        {
-            const btVector3 d = b - a
-            const btScalar l = d.length2()
-            if (l > GJK_SIMPLEX2_EPS) {
-                const btScalar t(l > 0? - btDot(a, d) / l:0)
-                if (t >= 1) {
-                    w[0] = 0;w[1] = 1;m = 2;return (b.length2()); } else if (t <= 0) {
-                    w[0] = 1;w[1] = 0;m = 1;return (a.length2()); } else {
-                    w[0] = 1 - (w[1] = t);m = 3;return ((a + d * t).length2()); }
-            }
-            return (-1)
-        }
-        static btScalar        projectorigin(    const btVector3& a,
-        const btVector3& b,
-        const btVector3& c,
-        btScalar* w,U& m)
-        {
-            static const U imd3 [] = { 1, 2, 0 }
-            const btVector3 * vt [] = { &a, &b, &c }
-            const btVector3 dl[] = { a - b, b-c, c-a }
-            const btVector3 n = btCross(dl[0], dl[1])
-            const btScalar l = n.length2()
-            if (l > GJK_SIMPLEX3_EPS) {
-                btScalar mindist = - 1
-                btScalar subw [2] = { 0.f, 0.f }
-                U subm (0)
-                for (U i = 0;i < 3;++i)
-                {
-                    if (btDot(*vt[i], btCross(dl[i], n)) > 0) {
-                        const U j = imd3[i]
-                        const btScalar subd(projectorigin(*vt[i], *vt[j], subw, subm))
-                        if ((mindist < 0) || (subd < mindist)) {
-                            mindist = subd
-                            m = static_cast<U>(((subm&1)?1<<i:0)+((subm&2)?1<<j:0))
-                            w[i] = subw[0]
-                            w[j] = subw[1]
-                            w[imd3[j]] = 0
+
+        companion object {
+
+            private fun det(a: Vec3, b: Vec3, c: Vec3) = a.y * b.z * c.x + a.z * b.x * c.y -
+                    a.x * b.z * c.y - a.y * b.x * c.z + a.x * b.y * c.z - a.z * b.y * c.x
+
+            private fun projectOrigin(a: Vec3, b: Vec3, w: FloatArray, m: IntArray): Float {
+                val d = b - a
+                val l = d.length2()
+                if (l > GJK_SIMPLEX2_EPS) {
+                    val t = if (l > 0) -a.dot(d) / l else 0f
+                    return when {
+                        t >= 1 -> {
+                            w[0] = 0f; w[1] = 1f; m[0] = 2; b.length2()
+                        }
+                        t <= 0 -> {
+                            w[0] = 1f; w[1] = 0f; m[0] = 1; a.length2()
+                        }
+                        else -> {
+                            w[1] = t; w[0] = 1 - w[1]; m[0] = 3; (a + d * t).length2()
                         }
                     }
                 }
-                if (mindist < 0) {
-                    const btScalar d = btDot(a, n)
-                    const btScalar s = btSqrt(l)
-                    const btVector3 p = n * (d / l)
-                    mindist = p.length2()
-                    m = 7
-                    w[0] = (btCross(dl[1], b - p)).length() / s
-                    w[1] = (btCross(dl[2], c - p)).length() / s
-                    w[2] = 1 - (w[0] + w[1])
-                }
-                return (mindist)
+                return -1f
             }
-            return (-1)
+
+            private val imd3 = intArrayOf(1, 2, 0)
+
+            private fun projectOrigin(a: Vec3, b: Vec3, c: Vec3, w: FloatArray, m: IntArray): Float {
+                val vt = arrayOf(a, b, c)
+                val dl = arrayOf(a - b, b - c, c - a)
+                val n = dl[0] cross dl[1]
+                val l = n.length2()
+                if (l > GJK_SIMPLEX3_EPS) {
+                    val mindist = -1f
+                    val subw = FloatArray(2)
+                    var subm = 0
+                    for (i in 0..2) {
+                        if (btDot(*vt[i], btCross(dl[i], n)) > 0) {
+                            const U j = imd3[i]
+                            const btScalar subd(projectorigin(*vt[i], *vt[j], subw, subm))
+                            if ((mindist < 0) || (subd < mindist)) {
+                                mindist = subd
+                                m = static_cast<U>(((subm&1)?1<<i:0)+((subm&2)?1<<j:0))
+                                w[i] = subw[0]
+                                w[j] = subw[1]
+                                w[imd3[j]] = 0
+                            }
+                        }
+                    }
+                    if (mindist < 0) {
+                        const btScalar d = btDot(a, n)
+                        const btScalar s = btSqrt(l)
+                        const btVector3 p = n * (d / l)
+                        mindist = p.length2()
+                        m = 7
+                        w[0] = (btCross(dl[1], b - p)).length() / s
+                        w[1] = (btCross(dl[2], c - p)).length() / s
+                        w[2] = 1 - (w[0] + w[1])
+                    }
+                    return (mindist)
+                }
+                return (-1)
+            }
         }
+
+
+
         static btScalar        projectorigin(    const btVector3& a,
         const btVector3& b,
         const btVector3& c,

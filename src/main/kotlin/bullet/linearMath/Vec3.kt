@@ -35,6 +35,14 @@ open class Vec3 {
         w = v.w
     }
 
+    operator fun set(index: Int, value: Float) = when (index) {
+        0 -> x = value
+        1 -> y = value
+        2 -> z = value
+        3 -> w = value
+        else -> throw Error()
+    }
+
     operator fun get(index: Int) = when (index) {
         0 -> x
         1 -> y
@@ -56,26 +64,31 @@ open class Vec3 {
         y += v.y
         z += v.z
     }
+
     operator fun minusAssign(v: Vec3) {
         x -= v.x
         y -= v.y
         z -= v.z
     }
+
     operator fun timesAssign(v: Vec3) {
         x *= v.x
         y *= v.y
         z *= v.z
     }
+
     operator fun timesAssign(f: Float) {
         x *= f
         y *= f
         z *= f
     }
+
     operator fun divAssign(v: Vec3) {
         x /= v.x
         y /= v.y
         z /= v.z
     }
+
     operator fun divAssign(v: Float) {
         x /= v
         y /= v
