@@ -179,12 +179,13 @@ object GjkEpaSolver2 {
                 }
                 /* Reduce simplex						*/
                 val weights = FloatArray(4)
-                var mask = 0
+                val p = intArrayOf(0)
                 when (cs.rank) {
-                    2 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, weights, mask)
-                    3 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, weights, mask)
-                    4 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, cs.c[3].w, weights, mask)
+                    2 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, weights, p)
+                    3 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, weights, p)
+                    4 -> sqdist = projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, cs.c[3].w, weights, p)
                 }
+                val mask = p[0]
                 if (sqdist >= 0) {/* Valid	*/
                     ns.rank = 0
                     ray put 0f
@@ -343,19 +344,19 @@ object GjkEpaSolver2 {
             }
         }
 
+        val imd3_ = intArrayOf(1, 2, 0)
         fun projectOrigin(a: Vec3, b: Vec3, c: Vec3, d: Vec3, w: FloatArray, m: IntArray): Float {
-            static const U imd3 [] = { 1, 2, 0 }
-            const btVector3 * vt [] = { &a, &b, &c, &d }
-            const btVector3 dl[] = { a - d, b-d, c-d }
-            const btScalar vl = det(dl[0], dl[1], dl[2])
-            const bool ng = (vl * btDot(a, btCross(b - c, a - b))) <= 0
-            if (ng && (btFabs(vl) > GJK_SIMPLEX4_EPS)) {
+            val vt = arrayOf(a, b, c, d)
+            val dl = arrayOf(a - d, b - d, c - d)
+            val vl = det(dl[0], dl[1], dl[2])
+            val ng = vl * (a dot (b - c).cross(a - b)) <= 0
+            if (ng && abs(vl) > GJK_SIMPLEX4_EPS)) {
                 btScalar mindist = - 1
                 btScalar subw [3] = { 0.f, 0.f, 0.f }
                 U subm (0)
                 for (U i = 0;i < 3;++i)
                 {
-                    const U j = imd3[i]
+                    const U j = imd3_[i]
                     const btScalar s = vl * btDot(d, btCross(dl[i], dl[j]))
                     if (s > 0) {
                         const btScalar subd = projectorigin(*vt[i], *vt[j], d, subw, subm)
@@ -366,7 +367,7 @@ object GjkEpaSolver2 {
                             (subm&4?8:0))
                             w[i] = subw[0]
                             w[j] = subw[1]
-                            w[imd3[j]] = 0
+                            w[imd3_[j]] = 0
                             w[3] = subw[2]
                         }
                     }

@@ -53,5 +53,7 @@ val Float.Companion.EPSILON get() = 1.192092896e-07F
 //#define DECIMAL_DIG      DBL_DECIMAL_DIG
 
 val Boolean.i get() = if (this) 1 else 0
+val Int.f get() = toFloat()
+val Number.f get() = toFloat()
 
 infix fun Int.has(b: Int) = (this and b) != 0

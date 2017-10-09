@@ -22,8 +22,8 @@ buildscript {
 }
 
 dependencies {
-//    testCompile 'com.github.elect86:kotlintest:43281b7e1b'
     compile "org.jetbrains.kotlin:kotlin-stdlib"
+    testCompile 'io.kotlintest:kotlintest:2.0.6'
 }
 
 repositories {

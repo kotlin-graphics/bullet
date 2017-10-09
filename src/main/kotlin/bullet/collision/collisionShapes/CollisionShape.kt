@@ -1,6 +1,7 @@
 package bullet.collision.collisionShapes
 
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes
+import bullet.collision.broadphaseCollision.BroadphaseProxy
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 
@@ -11,8 +12,8 @@ abstract class CollisionShape {
     //    void* m_userPointer = null;
     var userIndex = -1
 
-    /** getAabb returns the axis aligned bounding box in the coordinate frame of the given transform t. */
-    abstract fun getAabb(t: Transform, aabbMin: Vec3, aabbMax: Vec3)
+    /** getAabb returns the axis aligned bounding box in the coordinate frame of the given transform trans. */
+    abstract fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3)
 
     open fun getBoundingSphere(center: Vec3, radius: FloatArray) {
         val tr = Transform()
@@ -37,7 +38,8 @@ abstract class CollisionShape {
         return disc[0]
     }
 
-    open fun getContactBreakingThreshold(defaultContactThresholdFactor: Float) = getAngularMotionDisc() * defaultContactThresholdFactor
+    open fun getContactBreakingThreshold(defaultContactThresholdFactor: Float) =
+            getAngularMotionDisc() * defaultContactThresholdFactor
 
     /** calculateTemporalAabb calculates the enclosing aabb for the moving object over interval [0..timeStep)
      *  result is conservative  */
@@ -73,9 +75,31 @@ abstract class CollisionShape {
         val angularMotion = angvel.length() * getAngularMotionDisc() * timeStep
         val angularMotion3d = Vec3(angularMotion)
         temporalAabbMin.put(temporalAabbMinx, temporalAabbMiny, temporalAabbMinz)
-        temporalAabbMax .put(temporalAabbMaxx, temporalAabbMaxy, temporalAabbMaxz)
+        temporalAabbMax.put(temporalAabbMaxx, temporalAabbMaxy, temporalAabbMaxz)
 
         temporalAabbMin -= angularMotion3d
         temporalAabbMax += angularMotion3d
     }
+
+    val isPolyhedral get() = BroadphaseProxy.isPolyhedral(shapeType.ordinal) // TODO check if leave enum or int
+    val isConvex2d get() = BroadphaseProxy.isConvex2d(shapeType.ordinal)
+    val sConvex get() = BroadphaseProxy.isConvex(shapeType.ordinal)
+    val isNonMoving get() = BroadphaseProxy.isNonMoving(shapeType.ordinal)
+    val isConcave get() = BroadphaseProxy.isConcave(shapeType.ordinal)
+    val isCompound get() = BroadphaseProxy.isCompound(shapeType.ordinal)
+    val isSoftBody get() = BroadphaseProxy.isSoftBody(shapeType.ordinal)
+
+    open var localScaling = Vec3()
+    open fun calculateLocalInertia(mass: Float, inertia: Vec3) {}
+
+    /** debugging support   */
+    open val name get() = ""
+
+    /** the getAnisotropicRollingFrictionDirection can be used in combination with setAnisotropicFriction
+     *  See Bullet/Demos/RollingFrictionDemo for an example */
+    open fun getAnisotropicRollingFrictionDirection() = Vec3(1f)
+
+    open var margin = 0f
+
+    open fun calculateSerializeBufferSize() = 0
 }

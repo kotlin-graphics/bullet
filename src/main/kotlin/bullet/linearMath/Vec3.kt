@@ -1,6 +1,7 @@
 package bullet.linearMath
 
 import bullet.EPSILON
+import bullet.f
 import kotlin.math.*
 
 open class Vec3 {
@@ -11,8 +12,11 @@ open class Vec3 {
     var w = 0f
 
     constructor()
+    constructor(number: Number) : this(number.f)
     constructor(float: Float) : this(float, float, float)
+    constructor(floats: FloatArray) : this(floats[0], floats[1], floats[2])
     constructor(v: Vec3) : this(v.x, v.y, v.z)
+    constructor(x: Number, y: Number, z: Number) : this(x.f, y.f, z.f)
     constructor(x: Float, y: Float, z: Float) {
         this.x = x
         this.y = y
@@ -20,7 +24,9 @@ open class Vec3 {
     }
 
     infix fun put(f: Float) = put(f, f, f)
+    infix fun put(floats: FloatArray) = put(floats[0], floats[1], floats[2])
 
+    fun put(x: Number, y: Number, z: Number) = put(x.f, y.f, z.f)
     fun put(x: Float, y: Float, z: Float) {
         this.x = x
         this.y = y
@@ -53,43 +59,44 @@ open class Vec3 {
 
     operator fun unaryMinus() = Vec3(-x, -y, -z)
     operator fun plus(v: Vec3) = Vec3(x + v.x, y + v.y, z + v.z)
+    operator fun plus(f: Float) = Vec3(x + f, y + f, z + f)
     operator fun minus(v: Vec3) = Vec3(x - v.x, y - v.y, z - v.z)
     operator fun times(v: Vec3) = Vec3(x * v.x, y * v.y, z * v.z)
     operator fun times(f: Float) = Vec3(x * f, y * f, z * f)
     operator fun div(v: Vec3) = Vec3(x / v.x, y / v.y, z / v.z)
     operator fun div(v: Float) = Vec3(x / v, y / v, z / v)
 
-    operator fun plusAssign(v: Vec3) {
+    infix operator fun plusAssign(v: Vec3) {
         x += v.x
         y += v.y
         z += v.z
     }
 
-    operator fun minusAssign(v: Vec3) {
+    infix operator fun minusAssign(v: Vec3) {
         x -= v.x
         y -= v.y
         z -= v.z
     }
 
-    operator fun timesAssign(v: Vec3) {
+    infix operator fun timesAssign(v: Vec3) {
         x *= v.x
         y *= v.y
         z *= v.z
     }
 
-    operator fun timesAssign(f: Float) {
+    infix operator fun timesAssign(f: Float) {
         x *= f
         y *= f
         z *= f
     }
 
-    operator fun divAssign(v: Vec3) {
+    infix operator fun divAssign(v: Vec3) {
         x /= v.x
         y /= v.y
         z /= v.z
     }
 
-    operator fun divAssign(v: Float) {
+    infix operator fun divAssign(v: Float) {
         x /= v
         y /= v
         z /= v
@@ -231,11 +238,11 @@ open class Vec3 {
     /** @returns index of maximum dot product between this and vectors in array[]
      *  @param array The other vectors
      *  @param dotOut The maximum dot product */
-    fun maxDot(array: Array<Vec3>, dotOut: FloatArray): Int {
+    fun maxDot(array: Array<Vec3>, arrayCount: Int, dotOut: FloatArray): Int {
 
         var maxDot1 = -Float.MAX_VALUE
         var ptIndex = -1
-        for (i in 0 until array.size) {
+        for (i in 0 until arrayCount) {
             val dot = array[i] dot this
             if (dot > maxDot1) {
                 maxDot1 = dot
@@ -249,10 +256,10 @@ open class Vec3 {
     /** @returns index of minimum dot product between this and vectors in array[]
      *  @param array The other vectors
      *  @param dotOut The minimum dot product */
-    fun minDot(array: Array<Vec3>, dotOut: FloatArray): Int {
+    fun minDot(array: Array<Vec3>, arrayCount: Int, dotOut: FloatArray): Int {
         var minDot = Float.MAX_VALUE
         var ptIndex = -1
-        for (i in 0 until array.size) {
+        for (i in 0 until arrayCount) {
             val dot = array[i] dot this
             if (dot < minDot) {
                 minDot = dot
