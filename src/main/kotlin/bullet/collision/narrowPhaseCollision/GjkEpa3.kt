@@ -416,8 +416,8 @@ object GjkEpaSolver3 {
         lateinit var result: GJK.Simplex
         var normal = Vec3()
         var depth = 0f
-        lateinit var svStore: Array<GJK.SV>
-        lateinit var fcStore: Array<Face>
+        val svStore = Array(EPA_MAX_VERTICES, { GJK.SV() })
+        val fcStore = Array(EPA_MAX_FACES, { Face() })
         var nextSv = 0
         val hull = List()
         val stock = List()
@@ -467,10 +467,10 @@ object GjkEpaSolver3 {
                 }
                 /* Build initial hull	*/
                 val tetra = arrayOf(
-                        newface(simplex.c[0], simplex.c[1], simplex.c[2], true),
-                        newface(simplex.c[1], simplex.c[0], simplex.c[3], true),
-                        newface(simplex.c[2], simplex.c[1], simplex.c[3], true),
-                        newface(simplex.c[0], simplex.c[2], simplex.c[3], true))
+                        newface(simplex.c[0], simplex.c[1], simplex.c[2], true)!!,
+                        newface(simplex.c[1], simplex.c[0], simplex.c[3], true)!!,
+                        newface(simplex.c[2], simplex.c[1], simplex.c[3], true)!!,
+                        newface(simplex.c[0], simplex.c[2], simplex.c[3], true)!!)
                 if (hull.count == 4) {
                     var best = findbest()
                     var outer = best
@@ -573,7 +573,7 @@ object GjkEpaSolver3 {
             } else false
         }
 
-        fun newface(a: GJK.SV, b: GJK.SV, c: GJK.SV, forced: Boolean): Face {
+        fun newface(a: GJK.SV, b: GJK.SV, c: GJK.SV, forced: Boolean): Face? {
             stock.root?.let { face ->
                 remove(stock, face)
                 append(hull, face)
@@ -600,10 +600,10 @@ object GjkEpaSolver3 {
 
                 remove(hull, face)
                 append(stock, face)
-                throw Error() //return null
+                return null
             }
             status = if (stock.root != null) EpaStatus.OutOfVertices else EpaStatus.OutOfFaces
-            throw Error() //return null
+            return null
         }
 
         fun findbest(): Face {
@@ -628,7 +628,7 @@ object GjkEpaSolver3 {
             if (f.pass != pass) {
                 val e1 = i1m3[e]
                 if (((f.n dot w.w) - f.d) < -EPA_PLANE_EPS) {
-                    newface(f.c[e1], f.c[e], w, false).let { nf ->
+                    newface(f.c[e1], f.c[e], w, false)?.let { nf ->
                         bind(nf, 0, f, e)
                         if (horizon.cf != null) bind(horizon.cf!!, 1, nf, 2); else horizon.ff = nf
                         horizon.cf = nf
