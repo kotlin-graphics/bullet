@@ -413,7 +413,7 @@ object GjkEpaSolver3 {
 
         /* Fields		*/
         var status = EpaStatus.Failed
-        lateinit var result: GJK.Simplex
+        var result = GJK.Simplex()
         var normal = Vec3()
         var depth = 0f
         val svStore = Array(EPA_MAX_VERTICES, { GJK.SV() })
@@ -520,17 +520,19 @@ object GjkEpaSolver3 {
                     val projection = outer.n * outer.d
                     normal put outer.n
                     depth = outer.d
-                    result.rank = 3
-                    result.c[0] = outer.c[0]
-                    result.c[1] = outer.c[1]
-                    result.c[2] = outer.c[2]
-                    result.p[0] = ((outer.c[1].w - projection) cross (outer.c[2].w - projection)).length()
-                    result.p[1] = ((outer.c[2].w - projection) cross (outer.c[0].w - projection)).length()
-                    result.p[2] = ((outer.c[0].w - projection) cross (outer.c[1].w - projection)).length()
-                    val sum = result.p[0] + result.p[1] + result.p[2]
-                    result.p[0] /= sum
-                    result.p[1] /= sum
-                    result.p[2] /= sum
+                    with(result) {
+                        rank = 3
+                        c[0] = outer.c[0]
+                        c[1] = outer.c[1]
+                        c[2] = outer.c[2]
+                        p[0] = ((outer.c[1].w - projection) cross (outer.c[2].w - projection)).length()
+                        p[1] = ((outer.c[2].w - projection) cross (outer.c[0].w - projection)).length()
+                        p[2] = ((outer.c[0].w - projection) cross (outer.c[1].w - projection)).length()
+                        val sum = p[0] + p[1] + p[2]
+                        p[0] /= sum
+                        p[1] /= sum
+                        p[2] /= sum
+                    }
                     return status
                 }
             }
@@ -543,9 +545,11 @@ object GjkEpaSolver3 {
             else
                 normal put 0f
             depth = 0f
-            result.rank = 1
-            result.c[0] = simplex.c[0]
-            result.p[0] = 1f
+            with(result) {
+                rank = 1
+                c[0] = simplex.c[0]
+                p[0] = 1f
+            }
             return status
         }
 
