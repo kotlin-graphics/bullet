@@ -14,14 +14,17 @@ class Collision : StringSpec() {
 
     init {
 
-//        "test sphere sphere distance, (SSTM.GJKMPR, 0.0001f)" {
-//            testSphereSphereDistance(SSTM.GJKMPR, 0.0001f)
-//        }
-//        "test sphere sphere distance, (SSTM.GJKEPA, 0.00001f)" {
-//            testSphereSphereDistance(SSTM.GJKEPA, 0.00001f)
-//        }
-        "test sphere sphere distance, (SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN, 0.1f)" {
+        "GjkMPR sphere sphere distance" {
+            testSphereSphereDistance(SSTM.GJKMPR, 0.0001f)
+        }
+        "GjkEpa sphere sphere distance" {
+            testSphereSphereDistance(SSTM.GJKEPA, 0.00001f)
+        }
+        "GjkEpa sphere sphere radius not full margin distance)" {
             testSphereSphereDistance(SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN, 0.1f)
+        }
+        "Analytic sphere sphere distance" {
+            testSphereSphereDistance(SSTM.ANALYTIC, 0.00001f)
         }
     }
 
