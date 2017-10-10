@@ -204,9 +204,6 @@ open class Vec3 {
      *  @param t The ration of this to v (t = 0 => return this, t=1 => return other)    */
     fun lerp(v: Vec3, t: Float) = Vec3(x + (v.x - x) * t, y + (v.y - y) * t, z + (v.z - z) * t)
 
-    override fun equals(other: Any?) = other is Vec3 && x == other.x && y == other.y && z == other.z && w == other.w
-    override fun hashCode() = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()) + w.hashCode()
-
     /** Set each element to the max of the current values and the values of another Vec3
      *  @param other The other Vec3 to compare with */
     fun setMax(other: Vec3) {
@@ -272,6 +269,10 @@ open class Vec3 {
 
     /** create a vector as  Vec3( this->dot( Vec3 v0 ), this->dot( Vec3 v1), this->dot( Vec3 v2 ))  */
     fun dot3(v0: Vec3, v1: Vec3, v2: Vec3) = Vec3(dot(v0), dot(v1), dot(v2))
+
+    override fun equals(other: Any?) = other is Vec3 && x == other.x && y == other.y && z == other.z && w == other.w
+    override fun hashCode() = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()) + w.hashCode()
+    override fun toString() = "($x, $y, $z, $w)"
 }
 
 operator fun Float.times(v: Vec3) = Vec3(v.x * this, v.y * this, v.z * this)

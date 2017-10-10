@@ -85,6 +85,7 @@ class VoronoiSimplexSolver {
 
     var needsUpdate = false
 
+
     fun removeVertex(index: Int) {
         assert(numVertices > 0)
         numVertices--
@@ -98,27 +99,6 @@ class VoronoiSimplexSolver {
         if (numVertices >= 3 && !usedVerts.usedVertexC) removeVertex(2)
         if (numVertices >= 2 && !usedVerts.usedVertexB) removeVertex(1)
         if (numVertices >= 1 && !usedVerts.usedVertexA) removeVertex(0)
-    }
-
-    /** clear the simplex, remove all the vertices  */
-    fun reset() {
-        cachedValidClosest = false
-        numVertices = 0
-        needsUpdate = true
-        lastW put LARGE_FLOAT
-        cachedBC.reset()
-    }
-
-    /** add a vertex    */
-    fun addVertex(w: Vec3, p: Vec3, q: Vec3) {
-        lastW = w
-        needsUpdate = true
-
-        simplexVectorW[numVertices] = w
-        simplexPointsP[numVertices] = p
-        simplexPointsQ[numVertices] = q
-
-        numVertices++
     }
 
     fun updateClosestVectorAndPoints(): Boolean {
@@ -146,7 +126,7 @@ class VoronoiSimplexSolver {
                 val to = simplexVectorW[1]
 
                 val p = Vec3()
-                var diff = p - from
+                val diff = p - from
                 val v = to - from
                 var t = v dot diff
 
@@ -243,167 +223,6 @@ class VoronoiSimplexSolver {
         return cachedValidClosest
     }
 
-    /** return/calculate the closest vertex */
-    fun closest(v: Vec3): Boolean {
-        val succes = updateClosestVectorAndPoints()
-        v put cachedV
-        return succes
-    }
-
-    fun maxVertex(): Float {
-        var maxV = 0f
-        repeat(numVertices) {
-            val curLen2 = simplexVectorW[it].length2()
-            if (maxV < curLen2) maxV = curLen2
-        }
-        return maxV
-    }
-
-    /** return the current simplex  */
-    fun getSimplex(pBuf: Array<Vec3>, qBuf: Array<Vec3>, yBuf: Array<Vec3>): Int {
-        repeat(numVertices) {
-            yBuf[it] put simplexVectorW[it]
-            pBuf[it] put simplexPointsP[it]
-            qBuf[it] put simplexPointsQ[it]
-        }
-        return numVertices
-    }
-
-    fun inSimplex(w: Vec3): Boolean {
-        var found = false
-        //btScalar maxV = btScalar(0.);
-
-        //w is in the current (reduced) simplex
-        repeat(numVertices) {
-            val cond = when {
-                USE_EQUAL_VERTEX_THRESHOLD -> simplexVectorW[it].distance2(w) <= equalVertexThreshold
-                else -> simplexVectorW[it] == w
-            }
-            if (cond) found = true
-        }
-
-        //check in case lastW is already removed
-        if (w == lastW) return true
-
-        return found
-    }
-
-    fun backupClosest(v: Vec3) = v.put(cachedV)
-
-    fun emptySimplex() = numVertices == 0
-
-    fun computePoints(p1: Vec3, p2: Vec3) {
-        updateClosestVectorAndPoints()
-        p1 put cachedP1
-        p2 put cachedP2
-    }
-
-    fun closestPtPointTriangle(p: Vec3, a: Vec3, b: Vec3, c: Vec3, result: SubSimplexClosestResult): Boolean {
-
-        result.usedVertices.reset()
-
-        // Check if P in vertex region outside A
-        val ab = b - a
-        val ac = c - a
-        val ap = p - a
-        val d1 = ab dot ap
-        val d2 = ac dot ap
-        if (d1 <= 0f && d2 <= 0f) {
-            result.closestPointOnSimplex put a
-            result.usedVertices.usedVertexA = true
-            result.setBarycentricCoordinates(1f, 0f, 0f)
-            return true// a; // barycentric coordinates (1,0,0)
-        }
-
-        // Check if P in vertex region outside B
-        val bp = p - b
-        val d3 = ab dot bp
-        val d4 = ac dot bp
-        if (d3 >= 0f && d4 <= d3) {
-            result.closestPointOnSimplex put b
-            result.usedVertices.usedVertexB = true
-            result.setBarycentricCoordinates(0f, 1f, 0f)
-
-            return true // b; // barycentric coordinates (0,1,0)
-        }
-        // Check if P in edge region of AB, if so return projection of P onto AB
-        val vc = d1 * d4 - d3 * d2
-        if (vc <= 0f && d1 >= 0f && d3 <= 0f) {
-            val v = d1 / (d1 - d3)
-            result.closestPointOnSimplex put (a + v * ab)
-            result.usedVertices.usedVertexA = true
-            result.usedVertices.usedVertexB = true
-            result.setBarycentricCoordinates(1 - v, v, 0f)
-            return true
-            //return a + v * ab; // barycentric coordinates (1-v,v,0)
-        }
-
-        // Check if P in vertex region outside C
-        val cp = p - c
-        val d5 = ab dot cp
-        val d6 = ac dot cp
-        if (d6 >= 0f && d5 <= d6) {
-            result.closestPointOnSimplex put c
-            result.usedVertices.usedVertexC = true
-            result.setBarycentricCoordinates(0f, 0f, 1f)
-            return true//c; // barycentric coordinates (0,0,1)
-        }
-
-        // Check if P in edge region of AC, if so return projection of P onto AC
-        val vb = d5 * d2 - d1 * d6
-        if (vb <= 0f && d2 >= 0f && d6 <= 0f) {
-            val w = d2 / (d2 - d6)
-            result.closestPointOnSimplex put (a + w * ac)
-            result.usedVertices.usedVertexA = true
-            result.usedVertices.usedVertexC = true
-            result.setBarycentricCoordinates(1 - w, 0f, w)
-            return true
-            //return a + w * ac; // barycentric coordinates (1-w,0,w)
-        }
-
-        // Check if P in edge region of BC, if so return projection of P onto BC
-        val va = d3 * d6 - d5 * d4
-        if (va <= 0f && d4 - d3 >= 0f && d5 - d6 >= 0f) {
-            val w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
-
-            result.closestPointOnSimplex put (b + w * (c - b))
-            result.usedVertices.usedVertexB = true
-            result.usedVertices.usedVertexC = true
-            result.setBarycentricCoordinates(0f, 1 - w, w)
-            return true
-            // return b + w * (c - b); // barycentric coordinates (0,1-w,w)
-        }
-
-        // P inside face region. Compute Q through its barycentric coordinates (u,v,w)
-        val denom = 1f / (va + vb + vc)
-        val v = vb * denom
-        val w = vc * denom
-
-        result.closestPointOnSimplex put (a + ab * v + ac * w)
-        result.usedVertices.usedVertexA = true
-        result.usedVertices.usedVertexB = true
-        result.usedVertices.usedVertexC = true
-        result.setBarycentricCoordinates(1 - v - w, v, w)
-
-        return true
-//	return a + ab * v + ac * w; // = u*a + v*b + w*c, u = va * denom = btScalar(1.0) - v - w
-    }
-
-    /** Test if point p and d lie on opposite sides of plane through abc    */
-    fun pointOutsideOfPlane(p: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3): Int {
-
-        val normal = (b - a) cross (c - a)
-
-        val signp = (p - a) dot normal // [AP AB AC]
-        val signd = (d - a) dot normal // [AD AB AC]
-
-        if (CATCH_DEGENERATE_TETRAHEDRON && signd * signd < 1e-4f * 1e-4f) {
-//		printf("affine dependent/degenerate\n");//
-            return -1
-        }
-        // Points on opposite sides if expression signs are opposite
-        return if (signp * signd < 0f) 1 else 0
-    }
 
     fun closestPtPointTetrahedron(p: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3, finalResult: SubSimplexClosestResult): Boolean {
 
@@ -531,5 +350,191 @@ class VoronoiSimplexSolver {
             return true
 
         return true
+    }
+
+    /** Test if point p and d lie on opposite sides of plane through abc    */
+    fun pointOutsideOfPlane(p: Vec3, a: Vec3, b: Vec3, c: Vec3, d: Vec3): Int {
+
+        val normal = (b - a) cross (c - a)
+
+        val signp = (p - a) dot normal // [AP AB AC]
+        val signd = (d - a) dot normal // [AD AB AC]
+
+        if (CATCH_DEGENERATE_TETRAHEDRON && signd * signd < 1e-4f * 1e-4f) {
+//		printf("affine dependent/degenerate\n");//
+            return -1
+        }
+        // Points on opposite sides if expression signs are opposite
+        return if (signp * signd < 0f) 1 else 0
+    }
+
+    fun closestPtPointTriangle(p: Vec3, a: Vec3, b: Vec3, c: Vec3, result: SubSimplexClosestResult): Boolean {
+
+        result.usedVertices.reset()
+
+        // Check if P in vertex region outside A
+        val ab = b - a
+        val ac = c - a
+        val ap = p - a
+        val d1 = ab dot ap
+        val d2 = ac dot ap
+        if (d1 <= 0f && d2 <= 0f) {
+            result.closestPointOnSimplex put a
+            result.usedVertices.usedVertexA = true
+            result.setBarycentricCoordinates(1f, 0f, 0f)
+            return true// a; // barycentric coordinates (1,0,0)
+        }
+
+        // Check if P in vertex region outside B
+        val bp = p - b
+        val d3 = ab dot bp
+        val d4 = ac dot bp
+        if (d3 >= 0f && d4 <= d3) {
+            result.closestPointOnSimplex put b
+            result.usedVertices.usedVertexB = true
+            result.setBarycentricCoordinates(0f, 1f, 0f)
+
+            return true // b; // barycentric coordinates (0,1,0)
+        }
+        // Check if P in edge region of AB, if so return projection of P onto AB
+        val vc = d1 * d4 - d3 * d2
+        if (vc <= 0f && d1 >= 0f && d3 <= 0f) {
+            val v = d1 / (d1 - d3)
+            result.closestPointOnSimplex put (a + v * ab)
+            result.usedVertices.usedVertexA = true
+            result.usedVertices.usedVertexB = true
+            result.setBarycentricCoordinates(1 - v, v, 0f)
+            return true
+            //return a + v * ab; // barycentric coordinates (1-v,v,0)
+        }
+
+        // Check if P in vertex region outside C
+        val cp = p - c
+        val d5 = ab dot cp
+        val d6 = ac dot cp
+        if (d6 >= 0f && d5 <= d6) {
+            result.closestPointOnSimplex put c
+            result.usedVertices.usedVertexC = true
+            result.setBarycentricCoordinates(0f, 0f, 1f)
+            return true//c; // barycentric coordinates (0,0,1)
+        }
+
+        // Check if P in edge region of AC, if so return projection of P onto AC
+        val vb = d5 * d2 - d1 * d6
+        if (vb <= 0f && d2 >= 0f && d6 <= 0f) {
+            val w = d2 / (d2 - d6)
+            result.closestPointOnSimplex put (a + w * ac)
+            result.usedVertices.usedVertexA = true
+            result.usedVertices.usedVertexC = true
+            result.setBarycentricCoordinates(1 - w, 0f, w)
+            return true
+            //return a + w * ac; // barycentric coordinates (1-w,0,w)
+        }
+
+        // Check if P in edge region of BC, if so return projection of P onto BC
+        val va = d3 * d6 - d5 * d4
+        if (va <= 0f && d4 - d3 >= 0f && d5 - d6 >= 0f) {
+            val w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
+
+            result.closestPointOnSimplex put (b + w * (c - b))
+            result.usedVertices.usedVertexB = true
+            result.usedVertices.usedVertexC = true
+            result.setBarycentricCoordinates(0f, 1 - w, w)
+            return true
+            // return b + w * (c - b); // barycentric coordinates (0,1-w,w)
+        }
+
+        // P inside face region. Compute Q through its barycentric coordinates (u,v,w)
+        val denom = 1f / (va + vb + vc)
+        val v = vb * denom
+        val w = vc * denom
+
+        result.closestPointOnSimplex put (a + ab * v + ac * w)
+        result.usedVertices.usedVertexA = true
+        result.usedVertices.usedVertexB = true
+        result.usedVertices.usedVertexC = true
+        result.setBarycentricCoordinates(1 - v - w, v, w)
+
+        return true
+//	return a + ab * v + ac * w; // = u*a + v*b + w*c, u = va * denom = btScalar(1.0) - v - w
+    }
+
+
+    /** clear the simplex, remove all the vertices  */
+    fun reset() {
+        cachedValidClosest = false
+        numVertices = 0
+        needsUpdate = true
+        lastW put LARGE_FLOAT
+        cachedBC.reset()
+    }
+
+    /** add a vertex    */
+    fun addVertex(w: Vec3, p: Vec3, q: Vec3) {
+        lastW = w
+        needsUpdate = true
+
+        simplexVectorW[numVertices] = w
+        simplexPointsP[numVertices] = p
+        simplexPointsQ[numVertices] = q
+
+        numVertices++
+    }
+
+    /** return/calculate the closest vertex */
+    fun closest(v: Vec3): Boolean {
+        val succes = updateClosestVectorAndPoints()
+        v put cachedV
+        return succes
+    }
+
+    fun maxVertex(): Float {
+        var maxV = 0f
+        repeat(numVertices) {
+            val curLen2 = simplexVectorW[it].length2()
+            if (maxV < curLen2) maxV = curLen2
+        }
+        return maxV
+    }
+
+    val fullSimplex get() = numVertices == 4
+
+    /** return the current simplex  */
+    fun getSimplex(pBuf: Array<Vec3>, qBuf: Array<Vec3>, yBuf: Array<Vec3>): Int {
+        repeat(numVertices) {
+            yBuf[it] put simplexVectorW[it]
+            pBuf[it] put simplexPointsP[it]
+            qBuf[it] put simplexPointsQ[it]
+        }
+        return numVertices
+    }
+
+    fun inSimplex(w: Vec3): Boolean {
+        var found = false
+        //btScalar maxV = btScalar(0.);
+
+        //w is in the current (reduced) simplex
+        repeat(numVertices) {
+            val cond = when {
+                USE_EQUAL_VERTEX_THRESHOLD -> simplexVectorW[it].distance2(w) <= equalVertexThreshold
+                else -> simplexVectorW[it] == w
+            }
+            if (cond) found = true
+        }
+
+        //check in case lastW is already removed
+        if (w == lastW) return true
+
+        return found
+    }
+
+    fun backupClosest(v: Vec3) = v.put(cachedV)
+
+    fun emptySimplex() = numVertices == 0
+
+    fun computePoints(p1: Vec3, p2: Vec3) {
+        updateClosestVectorAndPoints()
+        p1 put cachedP1
+        p2 put cachedP2
     }
 }

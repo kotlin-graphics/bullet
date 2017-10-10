@@ -1,11 +1,16 @@
 package bullet.collision.narrowPhaseCollision
 
+import bullet.collision.collisionShapes.ConvexShape
+import bullet.linearMath.DebugDraw
+import bullet.linearMath.Transform
+import bullet.linearMath.Vec3
+
 /** ConvexPenetrationDepthSolver provides an interface for penetration depth calculation.   */
 interface ConvexPenetrationDepthSolver {
 
     fun calcPenDepth(simplexSolver: SimplexSolverInterface,
-                     const btConvexShape* convexA,const btConvexShape* convexB,
-    const btTransform& transA,const btTransform& transB,
-    btVector3& v, btVector3& pa, btVector3& pb,
-    class btIDebugDraw* debugDraw):Boolean
+                     convexA: ConvexShape, convexB: ConvexShape,
+                     transA: Transform, transB: Transform,
+                     v: Vec3, pa: Vec3, pb: Vec3,
+                     debugDraw: DebugDraw): Boolean
 }

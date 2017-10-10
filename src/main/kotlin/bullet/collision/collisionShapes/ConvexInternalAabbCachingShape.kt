@@ -7,8 +7,8 @@ import bullet.linearMath.transformAabb
 /** ConvexInternalAabbCachingShape adds local aabb caching for convex shapes, to avoid expensive bounding box calculations    */
 abstract class ConvexInternalAabbCachingShape : ConvexInternalShape() {
 
-    var localAabbMin = Vec3()
-    var localAabbMax = Vec3()
+    var localAabbMin = Vec3(1)
+    var localAabbMax = Vec3(-1)
     var isLocalAabbValid = false
 
     fun setCachedLocalAabb(aabbMin: Vec3, aabbMax: Vec3) {

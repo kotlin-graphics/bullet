@@ -12,7 +12,7 @@ class ConvexPolyhedron {
     lateinit var faces: Array<Face>
     lateinit var uniqueEdges: ArrayList<Vec3>
 
-    var localCenter = Vec3()
+    val localCenter = Vec3()
     var extents = Vec3()
     var radius = 0f
     var c = Vec3()
@@ -69,16 +69,16 @@ class ConvexPolyhedron {
                 val p2 = vertices[it.indices[k]]
                 val area = ((p0 - p1) cross (p0 - p2)).length() * 0.5f
                 val center = (p0 + p1 + p2) / 3f
-                localCenter plusAssign (area * center)
+                localCenter += area * center
                 totalArea += area
             }
         }
-        localCenter divAssign totalArea
+        localCenter /= totalArea
 
         radius = Float.MAX_VALUE
         faces.forEach {
             val normal = Vec3(it.plane)
-            val dist = abs(localCenter.dot(normal) + it.plane[3])
+            val dist = abs(localCenter dot normal + it.plane[3]) // TODO check priority
             if (dist < radius) radius = dist
         }
 

@@ -2,10 +2,10 @@ package bullet.collision.collisionShapes
 
 import bullet.EPSILON
 import bullet.linearMath.LARGE_FLOAT
-import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 import bullet.linearMath.Vec3
 import kotlin.math.min
 import kotlin.math.sqrt
+import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 
 /** The btMultiSphereShape represents the convex hull of a collection of spheres. You can create special capsules or
  *  other smooth volumes.
@@ -19,18 +19,12 @@ class MultiSphereShape : ConvexInternalAabbCachingShape {
     constructor(positions: Array<Vec3>, radi: FloatArray, numSpheres: Int) {
         localPositionArray = positions
         radiArray = radi
-    }
-
-    constructor(position: Vec3, radi: Float, numSpheres: Int) {
-        localPositionArray = arrayOf(position)
-        radiArray = floatArrayOf(radi)
-    }
-
-    init {
         shapeType = BNT.MULTI_SPHERE_SHAPE_PROXYTYPE
         //btScalar startMargin = btScalar(BT_LARGE_FLOAT);
         recalcLocalAabb()
     }
+
+    constructor(position: Vec3, radi: Float, numSpheres: Int) : this(arrayOf(position), floatArrayOf(radi), numSpheres)
 
     /** CollisionShape Interface    */
     override fun calculateLocalInertia(mass: Float, inertia: Vec3) {

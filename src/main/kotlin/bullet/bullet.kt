@@ -57,3 +57,6 @@ val Int.f get() = toFloat()
 val Number.f get() = toFloat()
 
 infix fun Int.has(b: Int) = (this and b) != 0
+
+
+var DEBUG = true

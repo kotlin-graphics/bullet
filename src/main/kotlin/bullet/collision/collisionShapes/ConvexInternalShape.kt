@@ -8,7 +8,7 @@ import bullet.linearMath.times
 abstract class ConvexInternalShape : ConvexShape() {
 
     /** local scaling. collisionMargin is not scaled !  */
-    override var localScaling = Vec3()
+    override var localScaling = Vec3(1)
         set(value) {
             localScaling put value.absolute()
         }

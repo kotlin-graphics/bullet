@@ -1,13 +1,43 @@
+/*
+Bullet Continuous Collision Detection and Physics Library
+Copyright (c) 2003-2014 Erwin Coumans  http://continuousphysics.com/Bullet/
+
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely,
+subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+claim that you wrote the original software. If you use this software in a
+product, an acknowledgment in the product documentation would be appreciated
+but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+*/
+
+/*
+Initial GJK-EPA collision solver by Nathanael Presson, 2008
+Improvements and refactoring by Erwin Coumans, 2008-2014
+*/
+
 package bullet.collision.narrowPhaseCollision
 
-import bullet.collision.narrowPhaseCollision.GjkEpaSolver3.Results.Status.Invalid
-import bullet.collision.narrowPhaseCollision.GjkEpaSolver3.Results.Status.Separated
+import bullet.ConvexTemplate
+import bullet.DistanceTemplate
+import bullet.collision.narrowPhaseCollision.GjkEpaSolver3.Results.Status.*
+import bullet.has
 import bullet.linearMath.Mat3
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
+import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.sqrt
 
-class GjkEpaSolver3 {
+object GjkEpaSolver3 {
 
     class Results {
 
@@ -25,7 +55,7 @@ class GjkEpaSolver3 {
 
         var status = Invalid
         val witnesses = Array(2, { Vec3() })
-        val normal = Vec3()
+        var normal = Vec3()
         var distance = 0f
     }
 
@@ -49,8 +79,7 @@ class GjkEpaSolver3 {
     val EPA_PLANE_EPS = 0.00001f
     val EPA_INSIDE_EPS = 0.01f
 
-
-    class MinkowskiDiff(val convexAPtr: ConvexInterface, val convexBPtr: ConvexInterface) {
+    class MinkowskiDiff(val convexAPtr: ConvexTemplate, val convexBPtr: ConvexTemplate) {
 
         var toshape1 = Mat3()
         var toshape0 = Transform()
@@ -66,7 +95,8 @@ class GjkEpaSolver3 {
 
     enum class GjkStatus { Valid, Inside, Failed }
 
-    inner class GJK(val a: ConvexInterface, val b: ConvexInterface) {
+    class GJK(val a: ConvexTemplate, val b: ConvexTemplate) {
+
         /* Types		*/
         class SV(val d: Vec3 = Vec3(), val w: Vec3 = Vec3())
 
@@ -86,7 +116,7 @@ class GjkEpaSolver3 {
         val free = Array(4, { SV() })
         var nfree = 0
         var current = 0
-        var simplex: Simplex
+        lateinit var simplex: Simplex
         var status = GjkStatus.Failed
 
         fun initialize() {
@@ -149,7 +179,7 @@ class GjkEpaSolver3 {
                     removeVertice(simplices[current])
                     break
                 } else {  /* Update lastw */
-                    val clastw = (clastw + 1) and 3
+                    clastw = (clastw + 1) and 3
                     lastw[clastw] = w
                 }
                 /* Check for termination    */
@@ -165,115 +195,81 @@ class GjkEpaSolver3 {
                 sqdist = when (cs.rank) {
                     2 -> projectOrigin(cs.c[0].w, cs.c[1].w, weights, p)
                     3 -> projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, weights, p)
-                        case 4:    sqdist = projectorigin(cs.c[0]
-                    -> w
-                        ,
-                    cs.c[1] -> w
-                        ,
-                    cs.c[2] -> w
-                        ,
-                    cs.c[3] -> w
-                        ,
-                    weights, mask)
+                    4 -> projectOrigin(cs.c[0].w, cs.c[1].w, cs.c[2].w, cs.c[3].w, weights, p)
+                    else -> throw Error()
                 }
                 val mask = p[0]
                 if (sqdist >= 0) {/* Valid	*/
                     ns.rank = 0
-                    m_ray = btVector3(0, 0, 0)
-                    m_current = next
-                    for (U i = 0, ni = cs.rank;i < ni;++i)
-                    {
-                        if (mask&(1<<i))
-                        {
+                    ray put 0f
+                    current = next
+                    for (i in 0 until cs.rank)
+                        if (mask has (1 shl i)) {
                             ns.c[ns.rank] = cs.c[i]
                             ns.p[ns.rank++] = weights[i]
-                            m_ray += cs.c[i]->w*weights[i]
-                        }
-                        else
-                        {
-                            m_free[m_nfree++] = cs.c[i]
-                        }
-                    }
-                    if (mask == 15) m_status = eGjkInside
-                } else {/* Return old simplex				*/
-                    removevertice(m_simplices[m_current])
+                            ray += cs.c[i].w * weights[i]
+                        } else
+                            free[nfree++] = cs.c[i]
+                    if (mask == 15) status = GjkStatus.Inside
+                } else {    /* Return old simplex   */
+                    removeVertice(simplices[current])
                     break
                 }
-                m_status = ((++iterations) < GJK_MAX_ITERATIONS)?m_status:eGjkFailed
-            } while (m_status == eGjkValid)
-            m_simplex = & m_simplices [m_current]
-            switch(m_status)
-            {
-                case eGjkValid : m_distance = m_ray . length ();break
-                case eGjkInside : m_distance =0;break
-                default:
-                {
-                }
+                status = if (++iterations < GJK_MAX_ITERATIONS) status else GjkStatus.Failed
+            } while (status == GjkStatus.Valid)
+            simplex = simplices[current]
+            when (status) {
+                GjkStatus.Valid -> distance = ray.length()
+                GjkStatus.Inside -> distance = 0f
+                else -> Unit
             }
-            return (m_status)
+            return status
         }
-        bool EncloseOrigin ()
-        {
-            switch(m_simplex->rank)
-            {
-                case    1:
-                {
-                    for (U i = 0;i < 3;++i)
-                    {
-                        btVector3 axis = btVector3 (0, 0, 0)
-                        axis[i] = 1
-                        appendvertice(*m_simplex, axis)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
-                        appendvertice(*m_simplex, -axis)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
-                    }
+
+        fun encloseOrigin(): Boolean {
+            when (simplex.rank) {
+                1 -> for (i in 0..2) {
+                    val axis = Vec3()
+                    axis[i] = 1f
+                    appendVertice(simplex, axis)
+                    if (encloseOrigin()) return true
+                    removeVertice(simplex)
+                    appendVertice(simplex, -axis)
+                    if (encloseOrigin()) return true
+                    removeVertice(simplex)
                 }
-                break
-                case    2:
-                {
-                    const btVector3 d = m_simplex->c[1]->w-m_simplex->c[0]->w
-                    for (U i = 0;i < 3;++i)
-                    {
-                        btVector3 axis = btVector3 (0, 0, 0)
-                        axis[i] = 1
-                        const btVector3 p = btCross(d, axis)
+                2 -> {
+                    val d = simplex.c[1].w - simplex.c[0].w
+                    for (i in 0..2) {
+                        val axis = Vec3()
+                        axis[i] = 1f
+                        val p = d cross axis
                         if (p.length2() > 0) {
-                            appendvertice(*m_simplex, p)
-                            if (EncloseOrigin()) return (true)
-                            removevertice(*m_simplex)
-                            appendvertice(*m_simplex, -p)
-                            if (EncloseOrigin()) return (true)
-                            removevertice(*m_simplex)
+                            appendVertice(simplex, p)
+                            if (encloseOrigin()) return true
+                            removeVertice(simplex)
+                            appendVertice(simplex, -p)
+                            if (encloseOrigin()) return true
+                            removeVertice(simplex)
                         }
                     }
                 }
-                break
-                case    3:
-                {
-                    const btVector3 n = btCross(m_simplex->c[1]->w-m_simplex->c[0]->w,
-                    m_simplex->c[2]->w-m_simplex->c[0]->w)
+                3 -> {
+                    val n = (simplex.c[1].w - simplex.c[0].w) cross (simplex.c[2].w - simplex.c[0].w)
                     if (n.length2() > 0) {
-                        appendvertice(*m_simplex, n)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
-                        appendvertice(*m_simplex, -n)
-                        if (EncloseOrigin()) return (true)
-                        removevertice(*m_simplex)
+                        appendVertice(simplex, n)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
+                        appendVertice(simplex, -n)
+                        if (encloseOrigin()) return true
+                        removeVertice(simplex)
                     }
                 }
-                break
-                case    4:
-                {
-                    if (btFabs(det(m_simplex->c[0]->w-m_simplex->c[3]->w,
-                    m_simplex->c[1]->w-m_simplex->c[3]->w,
-                    m_simplex->c[2]->w-m_simplex->c[3]->w))>0)
-                    return (true)
-                }
-                break
+                4 -> if (abs(det(simplex.c[0].w - simplex.c[3].w, simplex.c[1].w - simplex.c[3].w,
+                        simplex.c[2].w - simplex.c[3].w)) > 0)
+                    return true
             }
-            return (false)
+            return false
         }
 
         /* Internals	*/
@@ -289,12 +285,10 @@ class GjkEpaSolver3 {
             simplex.c[simplex.rank] = free[--nfree]
             getSupport(v, simplex.c[simplex.rank++])
         }
-        static btScalar det(const btVector3 & a, const btVector3 & b, const btVector3 & c)
-        {
-            return (a.y() * b.z() * c.x() + a.z() * b.x() * c.y() -
-                    a.x() * b.z() * c.y() - a.y() * b.x() * c.z() +
-                    a.x() * b.y() * c.z() - a.z() * b.y() * c.x())
-        }
+
+        fun det(a: Vec3, b: Vec3, c: Vec3) = a.y * b.z * c.x + a.z * b.x * c.y -
+                a.x * b.z * c.y - a.y * b.x * c.z +
+                a.x * b.y * c.z - a.z * b.y * c.x
 
         fun projectOrigin(a: Vec3, b: Vec3, w: FloatArray, m: IntArray): Float {
             val d = b - a
@@ -312,429 +306,350 @@ class GjkEpaSolver3 {
             }
             return -1f
         }
-        static btScalar projectorigin(const btVector3 & a,
-        const btVector3 & b,
-        const btVector3 & c,
-        btScalar * w, U& m)
-        {
-            static const U imd3 [] = { 1, 2, 0 }
-            const btVector3 * vt [] = { &a, &b, &c }
-            const btVector3 dl[] = { a - b, b-c, c-a }
-            const btVector3 n = btCross(dl[0], dl[1])
-            const btScalar l = n.length2()
+
+        private val imd3 = intArrayOf(1, 2, 0)
+        fun projectOrigin(a: Vec3, b: Vec3, c: Vec3, w: FloatArray, m: IntArray): Float {
+
+            val vt = arrayOf(a, b, c)
+            val dl = arrayOf(a - b, b - c, c - a)
+            val n = dl[0] cross dl[1]
+            val l = n.length2()
             if (l > GJK_SIMPLEX3_EPS) {
-                btScalar mindist = - 1
-                btScalar subw [2] = { 0.f, 0.f }
-                U subm (0)
-                for (U i = 0;i < 3;++i)
-                {
-                    if (btDot(*vt[i], btCross(dl[i], n)) > 0) {
-                        const U j = imd3[i]
-                        const btScalar subd(projectorigin(*vt[i], *vt[j], subw, subm))
-                        if ((mindist < 0) || (subd < mindist)) {
+                var mindist = -1f
+                val subw = FloatArray(2)
+                var subm = 0
+                val p = IntArray(1)
+                for (i in 0..2)
+                    if (vt[i] dot (dl[i] cross n) > 0) {
+                        val j = imd3[i]
+                        val subd = projectOrigin(vt[i], vt[j], subw, p)
+                        subm = p[0]
+                        if (mindist < 0 || subd < mindist) {
                             mindist = subd
-                            m = static_cast<U>(((subm&1)?1<<i:0)+((subm&2)?1<<j:0))
+                            m[0] = (if (subm has 1) 1 shl i else 0) + if (subm has 2) 1 shl j else 0
                             w[i] = subw[0]
                             w[j] = subw[1]
-                            w[imd3[j]] = 0
+                            w[imd3[j]] = 0f
                         }
                     }
-                }
                 if (mindist < 0) {
-                    const btScalar d = btDot(a, n)
-                    const btScalar s = btSqrt(l)
-                    const btVector3 p = n * (d / l)
+                    val d = a dot n
+                    val s = sqrt(l)
+                    val p = n * (d / l)
                     mindist = p.length2()
-                    m = 7
-                    w[0] = (btCross(dl[1], b - p)).length() / s
-                    w[1] = (btCross(dl[2], c - p)).length() / s
+                    m[0] = 7
+                    w[0] = (dl[1] cross (b - p)).length() / s
+                    w[1] = (dl[2] cross (c - p)).length() / s
                     w[2] = 1 - (w[0] + w[1])
                 }
-                return (mindist)
+                return mindist
             }
-            return (-1)
+            return -1f
         }
-        static btScalar projectorigin(const btVector3 & a,
-        const btVector3 & b,
-        const btVector3 & c,
-        const btVector3 & d,
-        btScalar * w, U& m)
-        {
-            static const U imd3 [] = { 1, 2, 0 }
-            const btVector3 * vt [] = { &a, &b, &c, &d }
-            const btVector3 dl[] = { a - d, b-d, c-d }
-            const btScalar vl = det(dl[0], dl[1], dl[2])
-            const bool ng = (vl * btDot(a, btCross(b - c, a - b))) <= 0
-            if (ng && (btFabs(vl) > GJK_SIMPLEX4_EPS)) {
-                btScalar mindist = - 1
-                btScalar subw [3] = { 0.f, 0.f, 0.f }
-                U subm (0)
-                for (U i = 0;i < 3;++i)
-                {
-                    const U j = imd3[i]
-                    const btScalar s = vl * btDot(d, btCross(dl[i], dl[j]))
+
+        private val imd3_ = intArrayOf(1, 2, 0)
+        fun projectOrigin(a: Vec3, b: Vec3, c: Vec3, d: Vec3, w: FloatArray, m: IntArray): Float {
+
+            val vt = arrayOf(a, b, c, d)
+            val dl = arrayOf(a - d, b - d, c - d)
+            val vl = det(dl[0], dl[1], dl[2])
+            val ng = vl * (a dot ((b - c) cross (a - b))) <= 0
+            if (ng && abs(vl) > GJK_SIMPLEX4_EPS) {
+                var mindist = -1f
+                val subw = FloatArray(3)
+                var subm = 0
+                val p = IntArray(1)
+                for (i in 0..2) {
+                    val j = imd3_[i]
+                    val s = vl * (d dot (dl[i] cross dl[j]))
                     if (s > 0) {
-                        const btScalar subd = projectorigin(*vt[i], *vt[j], d, subw, subm)
-                        if ((mindist < 0) || (subd < mindist)) {
+                        val subd = projectOrigin(vt[i], vt[j], d, subw, p)
+                        subm = p[0]
+                        if (mindist < 0 || subd < mindist) {
                             mindist = subd
-                            m = static_cast<U>((subm&1?1<<i:0)+
-                            (subm&2?1<<j:0)+
-                            (subm&4?8:0))
+                            m[0] = (if (subm has 1) 1 shl i else 0) + (if (subm has 2) 1 shl j else 0) + if (subm has 4) 8 else 0
                             w[i] = subw[0]
                             w[j] = subw[1]
-                            w[imd3[j]] = 0
+                            w[imd3_[j]] = 0f
                             w[3] = subw[2]
                         }
                     }
                 }
                 if (mindist < 0) {
-                    mindist = 0
-                    m = 15
+                    mindist = 0f
+                    m[0] = 15
                     w[0] = det(c, b, d) / vl
                     w[1] = det(a, c, d) / vl
                     w[2] = det(b, a, d) / vl
                     w[3] = 1 - (w[0] + w[1] + w[2])
                 }
-                return (mindist)
+                return mindist
             }
-            return (-1)
+            return -1f
         }
     }
-//
-//
-//enum	eEpaStatus
-//{
-//    eEpaValid,
-//    eEpaTouching,
-//    eEpaDegenerated,
-//    eEpaNonConvex,
-//    eEpaInvalidHull,
-//    eEpaOutOfFaces,
-//    eEpaOutOfVertices,
-//    eEpaAccuraryReached,
-//    eEpaFallBack,
-//    eEpaFailed
-//};
-//
-//
-//// EPA
-//template <typename btConvexTemplate>
-//struct	EPA
-//{
-//    /* Types		*/
-//
-//    struct	sFace
-//            {
-//                btVector3	n;
-//                btScalar	d;
-//                typename GJK<btConvexTemplate>::sSV*		c[3];
-//                sFace*		f[3];
-//                sFace*		l[2];
-//                U1			e[3];
-//                U1			pass;
-//            };
-//    struct	sList
-//            {
-//                sFace*		root;
-//                U			count;
-//                sList() : root(0),count(0)	{}
-//            };
-//    struct	sHorizon
-//            {
-//                sFace*		cf;
-//                sFace*		ff;
-//                U			nf;
-//                sHorizon() : cf(0),ff(0),nf(0)	{}
-//            };
-//
-//    /* Fields		*/
-//    eEpaStatus		m_status;
-//    typename GJK<btConvexTemplate>::sSimplex	m_result;
-//    btVector3		m_normal;
-//    btScalar		m_depth;
-//    typename GJK<btConvexTemplate>::sSV				m_sv_store[EPA_MAX_VERTICES];
-//    sFace			m_fc_store[EPA_MAX_FACES];
-//    U				m_nextsv;
-//    sList			m_hull;
-//    sList			m_stock;
-//    /* Methods		*/
-//    EPA()
-//    {
-//        Initialize();
-//    }
-//
-//
-//    static inline void		bind(sFace* fa,U ea,sFace* fb,U eb)
-//    {
-//        fa->e[ea]=(U1)eb;fa->f[ea]=fb;
-//        fb->e[eb]=(U1)ea;fb->f[eb]=fa;
-//    }
-//    static inline void		append(sList& list,sFace* face)
-//    {
-//        face->l[0]	=	0;
-//        face->l[1]	=	list.root;
-//        if(list.root) list.root->l[0]=face;
-//        list.root	=	face;
-//        ++list.count;
-//    }
-//    static inline void		remove(sList& list,sFace* face)
-//    {
-//        if(face->l[1]) face->l[1]->l[0]=face->l[0];
-//        if(face->l[0]) face->l[0]->l[1]=face->l[1];
-//        if(face==list.root) list.root=face->l[1];
-//        --list.count;
-//    }
-//
-//
-//    void				Initialize()
-//    {
-//        m_status	=	eEpaFailed;
-//        m_normal	=	btVector3(0,0,0);
-//        m_depth		=	0;
-//        m_nextsv	=	0;
-//        for(U i=0;i<EPA_MAX_FACES;++i)
-//        {
-//            append(m_stock,&m_fc_store[EPA_MAX_FACES-i-1]);
-//        }
-//    }
-//    eEpaStatus			Evaluate(GJK<btConvexTemplate>& gjk,const btVector3& guess)
-//    {
-//        typename GJK<btConvexTemplate>::sSimplex&	simplex=*gjk.m_simplex;
-//        if((simplex.rank>1)&&gjk.EncloseOrigin())
-//        {
-//
-//            /* Clean up				*/
-//            while(m_hull.root)
-//            {
-//                sFace*	f = m_hull.root;
-//                remove(m_hull,f);
-//                append(m_stock,f);
-//            }
-//            m_status	=	eEpaValid;
-//            m_nextsv	=	0;
-//            /* Orient simplex		*/
-//            if(gjk.det(	simplex.c[0]->w-simplex.c[3]->w,
-//            simplex.c[1]->w-simplex.c[3]->w,
-//            simplex.c[2]->w-simplex.c[3]->w)<0)
-//            {
-//                btSwap(simplex.c[0],simplex.c[1]);
-//                btSwap(simplex.p[0],simplex.p[1]);
-//            }
-//            /* Build initial hull	*/
-//            sFace*	tetra[]={newface(simplex.c[0],simplex.c[1],simplex.c[2],true),
-//                newface(simplex.c[1],simplex.c[0],simplex.c[3],true),
-//                newface(simplex.c[2],simplex.c[1],simplex.c[3],true),
-//                newface(simplex.c[0],simplex.c[2],simplex.c[3],true)};
-//            if(m_hull.count==4)
-//            {
-//                sFace*		best=findbest();
-//                sFace		outer=*best;
-//                U			pass=0;
-//                U			iterations=0;
-//                bind(tetra[0],0,tetra[1],0);
-//                bind(tetra[0],1,tetra[2],0);
-//                bind(tetra[0],2,tetra[3],0);
-//                bind(tetra[1],1,tetra[3],2);
-//                bind(tetra[1],2,tetra[2],1);
-//                bind(tetra[2],2,tetra[3],1);
-//                m_status=eEpaValid;
-//                for(;iterations<EPA_MAX_ITERATIONS;++iterations)
-//                {
-//                    if(m_nextsv<EPA_MAX_VERTICES)
-//                    {
-//                        sHorizon		horizon;
-//                        typename GJK<btConvexTemplate>::sSV*			w=&m_sv_store[m_nextsv++];
-//                        bool			valid=true;
-//                        best->pass	=	(U1)(++pass);
-//                        gjk.getsupport(best->n,*w);
-//                        const btScalar	wdist=btDot(best->n,w->w)-best->d;
-//                        if(wdist>EPA_ACCURACY)
-//                        {
-//                            for(U j=0;(j<3)&&valid;++j)
-//                            {
-//                                valid&=expand(	pass,w,
-//                                best->f[j],best->e[j],
-//                                horizon);
-//                            }
-//                            if(valid&&(horizon.nf>=3))
-//                            {
-//                                bind(horizon.cf,1,horizon.ff,2);
-//                                remove(m_hull,best);
-//                                append(m_stock,best);
-//                                best=findbest();
-//                                outer=*best;
-//                            } else { m_status=eEpaInvalidHull;break; }
-//                        } else { m_status=eEpaAccuraryReached;break; }
-//                    } else { m_status=eEpaOutOfVertices;break; }
-//                }
-//                const btVector3	projection=outer.n*outer.d;
-//                m_normal	=	outer.n;
-//                m_depth		=	outer.d;
-//                m_result.rank	=	3;
-//                m_result.c[0]	=	outer.c[0];
-//                m_result.c[1]	=	outer.c[1];
-//                m_result.c[2]	=	outer.c[2];
-//                m_result.p[0]	=	btCross(	outer.c[1]->w-projection,
-//                outer.c[2]->w-projection).length();
-//                m_result.p[1]	=	btCross(	outer.c[2]->w-projection,
-//                outer.c[0]->w-projection).length();
-//                m_result.p[2]	=	btCross(	outer.c[0]->w-projection,
-//                outer.c[1]->w-projection).length();
-//                const btScalar	sum=m_result.p[0]+m_result.p[1]+m_result.p[2];
-//                m_result.p[0]	/=	sum;
-//                m_result.p[1]	/=	sum;
-//                m_result.p[2]	/=	sum;
-//                return(m_status);
-//            }
-//        }
-//        /* Fallback		*/
-//        m_status	=	eEpaFallBack;
-//        m_normal	=	-guess;
-//        const btScalar	nl=m_normal.length();
-//        if(nl>0)
-//            m_normal	=	m_normal/nl;
-//        else
-//            m_normal	=	btVector3(1,0,0);
-//        m_depth	=	0;
-//        m_result.rank=1;
-//        m_result.c[0]=simplex.c[0];
-//        m_result.p[0]=1;
-//        return(m_status);
-//    }
-//    bool getedgedist(sFace* face, typename GJK<btConvexTemplate>::sSV* a, typename GJK<btConvexTemplate>::sSV* b, btScalar& dist)
-//    {
-//        const btVector3 ba = b->w - a->w;
-//        const btVector3 n_ab = btCross(ba, face->n); // Outward facing edge normal direction, on triangle plane
-//        const btScalar a_dot_nab = btDot(a->w, n_ab); // Only care about the sign to determine inside/outside, so not normalization required
-//
-//        if(a_dot_nab < 0)
-//        {
-//            // Outside of edge a->b
-//
-//            const btScalar ba_l2 = ba.length2();
-//            const btScalar a_dot_ba = btDot(a->w, ba);
-//            const btScalar b_dot_ba = btDot(b->w, ba);
-//
-//            if(a_dot_ba > 0)
-//            {
-//                // Pick distance vertex a
-//                dist = a->w.length();
-//            }
-//            else if(b_dot_ba < 0)
-//            {
-//                // Pick distance vertex b
-//                dist = b->w.length();
-//            }
-//            else
-//            {
-//                // Pick distance to edge a->b
-//                const btScalar a_dot_b = btDot(a->w, b->w);
-//                dist = btSqrt(btMax((a->w.length2() * b->w.length2() - a_dot_b * a_dot_b) / ba_l2, (btScalar)0));
-//            }
-//
-//            return true;
-//        }
-//
-//        return false;
-//    }
-//    sFace*				newface(typename GJK<btConvexTemplate>::sSV* a,typename GJK<btConvexTemplate>::sSV* b,typename GJK<btConvexTemplate>::sSV* c,bool forced)
-//    {
-//        if(m_stock.root)
-//        {
-//            sFace*	face=m_stock.root;
-//            remove(m_stock,face);
-//            append(m_hull,face);
-//            face->pass	=	0;
-//            face->c[0]	=	a;
-//            face->c[1]	=	b;
-//            face->c[2]	=	c;
-//            face->n		=	btCross(b->w-a->w,c->w-a->w);
-//            const btScalar	l=face->n.length();
-//            const bool		v=l>EPA_ACCURACY;
-//
-//            if(v)
-//            {
-//                if(!(getedgedist(face, a, b, face->d) ||
-//                getedgedist(face, b, c, face->d) ||
-//                getedgedist(face, c, a, face->d)))
-//                {
-//                    // Origin projects to the interior of the triangle
-//                    // Use distance to triangle plane
-//                    face->d = btDot(a->w, face->n) / l;
-//                }
-//
-//                face->n /= l;
-//                if(forced || (face->d >= -EPA_PLANE_EPS))
-//                {
-//                    return face;
-//                }
-//                else
-//                m_status=eEpaNonConvex;
-//            }
-//            else
-//                m_status=eEpaDegenerated;
-//
-//            remove(m_hull, face);
-//            append(m_stock, face);
-//            return 0;
-//
-//        }
-//        m_status = m_stock.root ? eEpaOutOfVertices : eEpaOutOfFaces;
-//        return 0;
-//    }
-//    sFace*				findbest()
-//    {
-//        sFace*		minf=m_hull.root;
-//        btScalar	mind=minf->d*minf->d;
-//        for(sFace* f=minf->l[1];f;f=f->l[1])
-//        {
-//            const btScalar	sqd=f->d*f->d;
-//            if(sqd<mind)
-//            {
-//                minf=f;
-//                mind=sqd;
-//            }
-//        }
-//        return(minf);
-//    }
-//    bool				expand(U pass,typename GJK<btConvexTemplate>::sSV* w,sFace* f,U e,sHorizon& horizon)
-//    {
-//        static const U	i1m3[]={1,2,0};
-//        static const U	i2m3[]={2,0,1};
-//        if(f->pass!=pass)
-//        {
-//            const U	e1=i1m3[e];
-//            if((btDot(f->n,w->w)-f->d)<-EPA_PLANE_EPS)
-//            {
-//                sFace*	nf=newface(f->c[e1],f->c[e],w,false);
-//                if(nf)
-//                {
-//                    bind(nf,0,f,e);
-//                    if(horizon.cf) bind(horizon.cf,1,nf,2); else horizon.ff=nf;
-//                    horizon.cf=nf;
-//                    ++horizon.nf;
-//                    return(true);
-//                }
-//            }
-//            else
-//            {
-//                const U	e2=i2m3[e];
-//                f->pass		=	(U1)pass;
-//                if(	expand(pass,w,f->f[e1],f->e[e1],horizon)&&
-//                expand(pass,w,f->f[e2],f->e[e2],horizon))
-//                {
-//                    remove(m_hull,f);
-//                    append(m_stock,f);
-//                    return(true);
-//                }
-//            }
-//        }
-//        return(false);
-//    }
-//
-//};
 
-    fun initialize(a: ConvexInterface, b: ConvexInterface, results: Results, shape: MinkowskiDiff) {
+
+    enum class EpaStatus { Valid, Touching, Degenerated, NonConvex, InvalidHull, OutOfFaces, OutOfVertices,
+        AccuraryReached, FallBack, Failed
+    }
+
+    class EPA {
+        /* Types		*/
+
+        class Face {
+            var n = Vec3()
+            var d = 0f
+            val c = Array(3, { GJK.SV() })
+            val f = Array<Face?>(3, { null })
+            val l = Array<Face?>(2, { null })
+            val e = IntArray(3)
+            var pass = 0
+        }
+
+        class List(var root: Face? = null, var count: Int = 0)
+
+        class Horizon(var cf: Face? = null, var ff: Face? = null, var nf: Int = 0)
+
+        /* Fields		*/
+        var status = EpaStatus.Failed
+        lateinit var result: GJK.Simplex
+        var normal = Vec3()
+        var depth = 0f
+        lateinit var svStore: Array<GJK.SV>
+        lateinit var fcStore: Array<Face>
+        var nextSv = 0
+        val hull = List()
+        val stock = List()
+
+        init {
+            for (i in 0 until EPA_MAX_FACES) append(stock, fcStore[EPA_MAX_FACES - i - 1])
+        }
+
+        /* Methods		*/
+        fun bind(fa: Face, ea: Int, fb: Face, eb: Int) {
+            fa.e[ea] = eb; fa.f[ea] = fb
+            fb.e[eb] = ea; fb.f[eb] = fa
+        }
+
+        fun append(list: List, face: Face) {
+            face.l[0] = null
+            face.l[1] = list.root
+            list.root?.l?.set(0, face)
+            list.root = face
+            ++list.count
+        }
+
+        fun remove(list: List, face: Face) {
+            face.l[1]?.l?.set(0, face.l[0])
+            face.l[0]?.l?.set(1, face.l[1])
+            if (face === list.root) list.root = face.l[1]
+            --list.count
+        }
+
+        fun evaluate(gjk: GJK, guess: Vec3): EpaStatus {
+            val simplex = gjk.simplex
+            if (simplex.rank > 1 && gjk.encloseOrigin()) {
+
+                /* Clean up				*/
+                while (hull.root != null) {
+                    val f = hull.root!!
+                    remove(hull, f)
+                    append(stock, f)
+                }
+                status = EpaStatus.Valid
+                nextSv = 0
+                /* Orient simplex		*/
+                if (gjk.det(simplex.c[0].w - simplex.c[3].w, simplex.c[1].w - simplex.c[3].w,
+                        simplex.c[2].w - simplex.c[3].w) < 0) {
+                    val a = simplex.c[0]; simplex.c[0] = simplex.c[1]; simplex.c[1] = a
+                    val b = simplex.p[0]; simplex.p[0] = simplex.p[1]; simplex.p[1] = b
+                }
+                /* Build initial hull	*/
+                val tetra = arrayOf(
+                        newface(simplex.c[0], simplex.c[1], simplex.c[2], true),
+                        newface(simplex.c[1], simplex.c[0], simplex.c[3], true),
+                        newface(simplex.c[2], simplex.c[1], simplex.c[3], true),
+                        newface(simplex.c[0], simplex.c[2], simplex.c[3], true))
+                if (hull.count == 4) {
+                    var best = findbest()
+                    var outer = best
+                    var pass = 0
+                    var iterations = 0
+                    bind(tetra[0], 0, tetra[1], 0)
+                    bind(tetra[0], 1, tetra[2], 0)
+                    bind(tetra[0], 2, tetra[3], 0)
+                    bind(tetra[1], 1, tetra[3], 2)
+                    bind(tetra[1], 2, tetra[2], 1)
+                    bind(tetra[2], 2, tetra[3], 1)
+                    status = EpaStatus.Valid
+                    while (iterations < EPA_MAX_ITERATIONS) {
+                        if (nextSv < EPA_MAX_VERTICES) {
+                            val horizon = Horizon()
+                            val w = svStore[nextSv++]
+                            var valid = true
+                            best.pass = ++pass
+                            gjk.getSupport(best.n, w)
+                            val wdist = (best.n dot w.w) - best.d
+                            if (wdist > EPA_ACCURACY) {
+                                var j = 0
+                                while (j < 3 && valid) {
+                                    valid = valid && expand(pass, w, best.f[j]!!, best.e[j], horizon)
+                                    ++j
+                                }
+                                if (valid && (horizon.nf >= 3)) {
+                                    bind(horizon.cf!!, 1, horizon.ff!!, 2)
+                                    remove(hull, best)
+                                    append(stock, best)
+                                    best = findbest()
+                                    outer = best
+                                } else {
+                                    status = EpaStatus.InvalidHull
+                                    break
+                                }
+                            } else {
+                                status = EpaStatus.AccuraryReached
+                                break
+                            }
+                        } else {
+                            status = EpaStatus.OutOfVertices
+                            break
+                        }
+                        ++iterations
+                    }
+                    val projection = outer.n * outer.d
+                    normal put outer.n
+                    depth = outer.d
+                    result.rank = 3
+                    result.c[0] = outer.c[0]
+                    result.c[1] = outer.c[1]
+                    result.c[2] = outer.c[2]
+                    result.p[0] = ((outer.c[1].w - projection) cross (outer.c[2].w - projection)).length()
+                    result.p[1] = ((outer.c[2].w - projection) cross (outer.c[0].w - projection)).length()
+                    result.p[2] = ((outer.c[0].w - projection) cross (outer.c[1].w - projection)).length()
+                    val sum = result.p[0] + result.p[1] + result.p[2]
+                    result.p[0] /= sum
+                    result.p[1] /= sum
+                    result.p[2] /= sum
+                    return status
+                }
+            }
+            /* Fallback		*/
+            status = EpaStatus.FallBack
+            normal = -guess
+            val nl = normal.length()
+            if (nl > 0)
+                normal divAssign nl
+            else
+                normal put 0f
+            depth = 0f
+            result.rank = 1
+            result.c[0] = simplex.c[0]
+            result.p[0] = 1f
+            return status
+        }
+
+        /** NOTE: &dist has been removed for the assumption of being always face.d */
+        fun getEdgeDist(face: Face, a: GJK.SV, b: GJK.SV): Boolean {
+            val ba = b.w - a.w
+            val n_ab = ba cross face.n  // Outward facing edge normal direction, on triangle plane
+            val a_dot_nab = a.w dot n_ab    // Only care about the sign to determine inside/outside, so not normalization required
+
+            return if (a_dot_nab < 0) {
+                // Outside of edge a->b
+                val ba_l2 = ba.length2()
+                val a_dot_ba = a.w dot ba
+                val b_dot_ba = b.w dot ba
+
+                face.d = when {
+                    a_dot_ba > 0 -> a.w.length()    // Pick distance vertex a
+                    b_dot_ba < 0 -> b.w.length()    // Pick distance vertex b
+                    else -> { // Pick distance to edge a->b
+                        val a_dot_b = a.w dot b.w
+                        sqrt(max((a.w.length2() * b.w.length2() - a_dot_b * a_dot_b) / ba_l2, 0f))
+                    }
+                }
+                true
+            } else false
+        }
+
+        fun newface(a: GJK.SV, b: GJK.SV, c: GJK.SV, forced: Boolean): Face {
+            stock.root?.let { face ->
+                remove(stock, face)
+                append(hull, face)
+                face.pass = 0
+                face.c[0] = a
+                face.c[1] = b
+                face.c[2] = c
+                face.n = (b.w - a.w) cross (c.w - a.w)
+                val l = face.n.length()
+
+                if (l > EPA_ACCURACY) {
+                    if (!(getEdgeDist(face, a, b) || getEdgeDist(face, b, c) || getEdgeDist(face, c, a)))
+                    // Origin projects to the interior of the triangle
+                    // Use distance to triangle plane
+                        face.d = (a.w dot face.n) / l
+
+                    face.n divAssign l
+                    if (forced || face.d >= -EPA_PLANE_EPS)
+                        return face
+                    else
+                        status = EpaStatus.NonConvex
+                } else
+                    status = EpaStatus.Degenerated
+
+                remove(hull, face)
+                append(stock, face)
+                throw Error() //return null
+            }
+            status = if (stock.root != null) EpaStatus.OutOfVertices else EpaStatus.OutOfFaces
+            throw Error() //return null
+        }
+
+        fun findbest(): Face {
+            var minf = hull.root!!
+            var mind = minf.d * minf.d
+            var f = minf.l[1]
+            while (f != null) {
+                val sqd = f.d * f.d
+                if (sqd < mind) {
+                    minf = f
+                    mind = sqd
+                }
+                f = f.l[1]
+            }
+            return (minf)
+        }
+
+        val i1m3 = intArrayOf(1, 2, 0)
+        val i2m3 = intArrayOf(2, 0, 1)
+
+        fun expand(pass: Int, w: GJK.SV, f: Face, e: Int, horizon: Horizon): Boolean {
+            if (f.pass != pass) {
+                val e1 = i1m3[e]
+                if (((f.n dot w.w) - f.d) < -EPA_PLANE_EPS) {
+                    newface(f.c[e1], f.c[e], w, false).let { nf ->
+                        bind(nf, 0, f, e)
+                        if (horizon.cf != null) bind(horizon.cf!!, 1, nf, 2); else horizon.ff = nf
+                        horizon.cf = nf
+                        ++horizon.nf
+                        return true
+                    }
+                } else {
+                    val e2 = i2m3[e]
+                    f.pass = pass
+                    if (expand(pass, w, f.f[e1]!!, f.e[e1], horizon) && expand(pass, w, f.f[e2]!!, f.e[e2], horizon)) {
+                        remove(hull, f)
+                        append(stock, f)
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+    }
+
+    fun initialize(a: ConvexTemplate, b: ConvexTemplate, results: Results, shape: MinkowskiDiff) {
         /* Results		*/
         results.witnesses[0] put 0f
         results.witnesses[1] put 0f
@@ -743,155 +658,75 @@ class GjkEpaSolver3 {
         shape.toshape1 = b.worldTrans.basis transposeTimes a.worldTrans.basis
         shape.toshape0 = a.worldTrans inverseTimes b.worldTrans
     }
-//
-//
-////
-//// Api
-////
-//
-//
-//
-////
-//template <typename btConvexTemplate>
-//bool		btGjkEpaSolver3_Distance(const btConvexTemplate& a, const btConvexTemplate& b,
-//const btVector3& guess,
-//btGjkEpaSolver3::sResults& results)
-//{
-//    MinkowskiDiff<btConvexTemplate>			shape(a,b);
-//    Initialize(a,b,results,shape);
-//    GJK<btConvexTemplate>				gjk(a,b);
-//    eGjkStatus	gjk_status=gjk.Evaluate(shape,guess);
-//    if(gjk_status==eGjkValid)
-//    {
-//        btVector3	w0=btVector3(0,0,0);
-//        btVector3	w1=btVector3(0,0,0);
-//        for(U i=0;i<gjk.m_simplex->rank;++i)
-//        {
-//            const btScalar	p=gjk.m_simplex->p[i];
-//            w0+=shape.Support( gjk.m_simplex->c[i]->d,0)*p;
-//            w1+=shape.Support(-gjk.m_simplex->c[i]->d,1)*p;
-//        }
-//        results.witnesses[0]	=	a.getWorldTransform()*w0;
-//        results.witnesses[1]	=	a.getWorldTransform()*w1;
-//        results.normal			=	w0-w1;
-//        results.distance		=	results.normal.length();
-//        results.normal			/=	results.distance>GJK_MIN_DISTANCE?results.distance:1;
-//        return(true);
-//    }
-//    else
-//    {
-//        results.status	=	gjk_status==eGjkInside?
-//        btGjkEpaSolver3::sResults::Penetrating	:
-//        btGjkEpaSolver3::sResults::GJK_Failed	;
-//        return(false);
-//    }
-//}
 
-    fun penetration(a: ConvexInterface, b: ConvexInterface, guess: Vec3, results: Results) {
+    //
+    // Api
+    //
+
+    fun distance(a: ConvexTemplate, b: ConvexTemplate, guess: Vec3, results: Results): Boolean {
+        val shape = MinkowskiDiff(a, b)
+        initialize(a, b, results, shape)
+        val gjk = GJK(a, b)
+        val status = gjk.evaluate(shape, guess)
+        if (status == GjkStatus.Valid) {
+            val w0 = Vec3()
+            val w1 = Vec3()
+            for (i in 0 until gjk.simplex.rank) {
+                val p = gjk.simplex.p[i]
+                w0 += shape.support(gjk.simplex.c[i].d, 0) * p
+                w1 += shape.support(-gjk.simplex.c[i].d, 1) * p
+            }
+            results.witnesses[0] = a.worldTrans * w0
+            results.witnesses[1] = a.worldTrans * w1
+            results.normal = w0 - w1
+            results.distance = results.normal.length()
+            results.normal divAssign if (results.distance > GJK_MIN_DISTANCE) results.distance else 1f
+            return true
+        }
+        results.status = if (status == GjkStatus.Inside) Penetrating else GJK_Failed
+        return false
+    }
+
+    fun penetration(a: ConvexTemplate, b: ConvexTemplate, guess: Vec3, results: Results): Boolean {
 
         val shape = MinkowskiDiff(a, b)
         initialize(a, b, results, shape)
-        GJK<btConvexTemplate> gjk (a, b)
-        eGjkStatus gjk_status = gjk . Evaluate (shape, -guess)
-        switch(gjk_status)
-        {
-            case eGjkInside :
-            {
-                EPA<btConvexTemplate> epa
-                        eEpaStatus epa_status = epa . Evaluate (gjk, -guess)
-                if (epa_status != eEpaFailed) {
-                    btVector3 w0 = btVector3 (0, 0, 0)
-                    for (U i = 0;i < epa.m_result.rank;++i)
-                    {
-                        w0 += shape.Support(epa.m_result.c[i]->d, 0)*epa.m_result.p[i]
-                    }
-                    results.status = btGjkEpaSolver3::sResults::Penetrating
-                    results.witnesses[0] = a.getWorldTransform() * w0
-                    results.witnesses[1] = a.getWorldTransform() * (w0 - epa.m_normal * epa.m_depth)
-                    results.normal = -epa.m_normal
-                    results.distance = -epa.m_depth
-                    return (true)
-                } else results.status = btGjkEpaSolver3::sResults::EPA_Failed
+        val gjk = GJK(a, b)
+        val gjkStatus = gjk.evaluate(shape, -guess)
+        when (gjkStatus) {
+            GjkStatus.Inside -> {
+                val epa = EPA()
+                val epaStatus = epa.evaluate(gjk, -guess)
+                if (epaStatus != EpaStatus.Failed) {
+                    val w0 = Vec3()
+                    for (i in 0 until epa.result.rank)
+                        w0 += shape.support(epa.result.c[i].d, 0) * epa.result.p[i]
+                    results.status = Penetrating
+                    results.witnesses[0] = a.worldTrans * w0
+                    results.witnesses[1] = a.worldTrans * (w0 - epa.normal * epa.depth)
+                    results.normal = -epa.normal
+                    results.distance = -epa.depth
+                    return true
+                } else results.status = EPA_Failed
             }
-            break
-            case eGjkFailed :
-            results.status = btGjkEpaSolver3::sResults::GJK_Failed
-            break
-            default:
-            {
-            }
+            GjkStatus.Failed -> results.status = EPA_Failed
+            else -> Unit
         }
-        return (false)
+        return false
     }
-//
-//#if 0
-//int	btComputeGjkEpaPenetration2(const btCollisionDescription& colDesc, btDistanceInfo* distInfo)
-//{
-//    btGjkEpaSolver3::sResults results;
-//    btVector3 guess = colDesc.m_firstDir;
-//
-//    bool res = btGjkEpaSolver3::Penetration(colDesc.m_objA,colDesc.m_objB,
-//            colDesc.m_transformA,colDesc.m_transformB,
-//            colDesc.m_localSupportFuncA,colDesc.m_localSupportFuncB,
-//            guess,
-//            results);
-//    if (res)
-//    {
-//        if ((results.status==btGjkEpaSolver3::sResults::Penetrating) || results.status==GJK::eStatus::Inside)
-//            {
-//                //normal could be 'swapped'
-//
-//                distInfo->m_distance = results.distance;
-//                distInfo->m_normalBtoA = results.normal;
-//                btVector3 tmpNormalInB = results.witnesses[1]-results.witnesses[0];
-//                btScalar lenSqr = tmpNormalInB.length2();
-//                if (lenSqr <= (SIMD_EPSILON*SIMD_EPSILON))
-//                {
-//                    tmpNormalInB = results.normal;
-//                    lenSqr = results.normal.length2();
-//                }
-//
-//                if (lenSqr > (SIMD_EPSILON*SIMD_EPSILON))
-//                {
-//                    tmpNormalInB /= btSqrt(lenSqr);
-//                    btScalar distance2 = -(results.witnesses[0]-results.witnesses[1]).length();
-//                    //only replace valid penetrations when the result is deeper (check)
-//                    //if ((distance2 < results.distance))
-//                    {
-//                        distInfo->m_distance = distance2;
-//                        distInfo->m_pointOnA= results.witnesses[0];
-//                        distInfo->m_pointOnB= results.witnesses[1];
-//                        distInfo->m_normalBtoA= tmpNormalInB;
-//                        return 0;
-//                    }
-//                }
-//            }
-//
-//    }
-//
-//    return -1;
-//}
-//#endif
-//
-//template <typename btConvexTemplate, typename btDistanceInfoTemplate>
-//int	btComputeGjkDistance(const btConvexTemplate& a, const btConvexTemplate& b,
-//const btGjkCollisionDescription& colDesc, btDistanceInfoTemplate* distInfo)
-//{
-//    btGjkEpaSolver3::sResults results;
-//    btVector3 guess = colDesc.m_firstDir;
-//
-//    bool isSeparated = btGjkEpaSolver3_Distance(	a,b,
-//    guess,
-//    results);
-//    if (isSeparated)
-//        {
-//            distInfo->m_distance = results.distance;
-//            distInfo->m_pointOnA= results.witnesses[0];
-//            distInfo->m_pointOnB= results.witnesses[1];
-//            distInfo->m_normalBtoA= results.normal;
-//            return 0;
-//        }
-//
-//    return -1;
-//}
+}
+
+fun computeGjkDistance(a: ConvexTemplate, b: ConvexTemplate, colDesc: GjkCollisionDescription, distInfo: DistanceTemplate): Int {
+    val results = GjkEpaSolver3.Results()
+    val guess = colDesc.firstDir
+
+    if (GjkEpaSolver3.distance(a, b, guess, results))   // is separated?
+        with(distInfo) {
+            distance = results.distance
+            pointOnA put results.witnesses[0]
+            pointOnB put results.witnesses[1]
+            normalBtoA put results.normal
+            return 0
+        }
+    return -1
 }
