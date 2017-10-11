@@ -81,13 +81,13 @@ abstract class CollisionShape {
         temporalAabbMax += angularMotion3d
     }
 
-    val isPolyhedral get() = BroadphaseProxy.isPolyhedral(shapeType.ordinal) // TODO check if leave enum or int
-    val isConvex2d get() = BroadphaseProxy.isConvex2d(shapeType.ordinal)
-    val sConvex get() = BroadphaseProxy.isConvex(shapeType.ordinal)
-    val isNonMoving get() = BroadphaseProxy.isNonMoving(shapeType.ordinal)
-    val isConcave get() = BroadphaseProxy.isConcave(shapeType.ordinal)
-    val isCompound get() = BroadphaseProxy.isCompound(shapeType.ordinal)
-    val isSoftBody get() = BroadphaseProxy.isSoftBody(shapeType.ordinal)
+    val isPolyhedral get() = BroadphaseProxy.isPolyhedral(shapeType.i) // TODO check if leave enum or int
+    val isConvex2d get() = BroadphaseProxy.isConvex2d(shapeType.i)
+    val sConvex get() = BroadphaseProxy.isConvex(shapeType.i)
+    val isNonMoving get() = BroadphaseProxy.isNonMoving(shapeType.i)
+    val isConcave get() = BroadphaseProxy.isConcave(shapeType.i)
+    val isCompound get() = BroadphaseProxy.isCompound(shapeType.i)
+    val isSoftBody get() = BroadphaseProxy.isSoftBody(shapeType.i)
 
     open var localScaling = Vec3()
     open fun calculateLocalInertia(mass: Float, inertia: Vec3) {}
@@ -97,7 +97,7 @@ abstract class CollisionShape {
 
     /** the getAnisotropicRollingFrictionDirection can be used in combination with setAnisotropicFriction
      *  See Bullet/Demos/RollingFrictionDemo for an example */
-    open fun getAnisotropicRollingFrictionDirection() = Vec3(1f)
+    open val anisotropicRollingFrictionDirection get() = Vec3(1f)
 
     open var margin = 0f
 

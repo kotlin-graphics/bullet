@@ -54,9 +54,11 @@ val Float.Companion.EPSILON get() = 1.192092896e-07F
 
 val Boolean.i get() = if (this) 1 else 0
 val Int.f get() = toFloat()
+val Int.bool get() = this != 0
 val Number.f get() = toFloat()
 
 infix fun Int.has(b: Int) = (this and b) != 0
-
+infix fun Int.hasnt(b: Int) = (this and b) == 0
+infix fun Int.wo(b: Int) = this and b.inv()
 
 var DEBUG = true

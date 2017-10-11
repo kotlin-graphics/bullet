@@ -52,6 +52,8 @@ class Transform {
     /** @return the transform of the vector */
     operator fun times(x: Vec3) = x.dot3(basis[0], basis[1], basis[2]) + origin
 
+    operator fun invoke(x: Vec3) = x.dot3(basis[0], basis[1], basis[2]) + origin
+
     /** @return the transform of the btQuaternion */
     operator fun times(q: Quat) = getRotation() * q
 

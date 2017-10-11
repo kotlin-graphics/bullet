@@ -1,6 +1,6 @@
 /*
 Bullet Continuous Collision Detection and Physics Library
-Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
+Copyright (c) 2003-2007 Erwin Coumans  http://continuousphysics.com/Bullet/
 
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the use of this software.
@@ -13,14 +13,16 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-package bullet.collision.collisionDispatch
+package bullet
 
-import bullet.collision.broadphaseCollision.CollisionAlgorithmConstructionInfo
+import bullet.collision.collisionDispatch.DefaultCollisionConfiguration
+import io.kotlintest.specs.StringSpec
 
-/** Used by the btCollisionDispatcher to register and create instances for btCollisionAlgorithm */
-abstract class CollisionAlgorithmCreateFunc {
+/** This is a Hello World program for running a basic Bullet physics simulation */
+class HelloWorld : StringSpec() {
 
-    var swapped = false
+    // -----initialization_start-----
 
-    abstract fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo , const btCollisionObjectWrapper* body0Wrap,const btCollisionObjectWrapper* body1Wrap)
+    // collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
+    val collisionConfiguration = DefaultCollisionConfiguration()
 }

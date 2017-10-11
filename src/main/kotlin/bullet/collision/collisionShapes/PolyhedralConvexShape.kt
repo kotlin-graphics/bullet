@@ -1,10 +1,12 @@
 package bullet.collision.collisionShapes
 
-import bullet.linearMath.Vec3
+import bullet.linearMath.*
+import kotlin.math.min
+import kotlin.math.sqrt
 
-open class PolyhedralConvexShape : ConvexInternalShape() {
+abstract class PolyhedralConvexShape : ConvexInternalShape() {
 
-    lateinit var polyhedron: ConvexPolyhedron
+    var polyhedron: ConvexPolyhedron? = null
 
     /** optional method mainly used to generate multiple contact points by clipping polyhedral features (faces/edges)
      *  experimental/work-in-progress   */
@@ -12,37 +14,37 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 
         polyhedron = ConvexPolyhedron()
 
-        val orgVertices = Array(getNumVertices(), { Vec3().apply { getVertex(it, this) } })
+        val orgVertices = Array(numVertices, { Vec3().apply { getVertex(it, this) } })
 
         TODO()
 //        btConvexHullComputer conv;
 //
 //        if (shiftVerticesByMargin) {
-//            btAlignedObjectArray<btVector3> planeEquations;
+//            btAlignedObjectArray<Vec3> planeEquations;
 //            btGeometryUtil::getPlaneEquationsFromVertices(orgVertices, planeEquations);
 //
-//            btAlignedObjectArray<btVector3> shiftedPlaneEquations;
+//            btAlignedObjectArray<Vec3> shiftedPlaneEquations;
 //            for (int p = 0;p < planeEquations.size();p++)
 //            {
-//                btVector3 plane = planeEquations [p];
+//                Vec3 plane = planeEquations [p];
 //                //	   btScalar margin = getMargin();
 //                plane[3] -= getMargin();
 //                shiftedPlaneEquations.push_back(plane);
 //            }
 //
-//            btAlignedObjectArray<btVector3> tmpVertices;
+//            btAlignedObjectArray<Vec3> tmpVertices;
 //
 //            btGeometryUtil::getVerticesFromPlaneEquations(shiftedPlaneEquations, tmpVertices);
 //
-//            conv.compute(& tmpVertices [0].getX(), sizeof(btVector3), tmpVertices.size(), 0.f, 0.f);
+//            conv.compute(& tmpVertices [0].getX(), sizeof(Vec3), tmpVertices.size(), 0.f, 0.f);
 //        } else {
 //
-//            conv.compute(& orgVertices [0].getX(), sizeof(btVector3), orgVertices.size(), 0.f, 0.f);
+//            conv.compute(& orgVertices [0].getX(), sizeof(Vec3), orgVertices.size(), 0.f, 0.f);
 //        }
 //
 //
 //
-//        btAlignedObjectArray<btVector3> faceNormals;
+//        btAlignedObjectArray<Vec3> faceNormals;
 //        int numFaces = conv . faces . size ();
 //        faceNormals.resize(numFaces);
 //        btConvexHullComputer * convexUtil = & conv;
@@ -66,7 +68,7 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 //            const btConvexHullComputer ::Edge * firstEdge = & convexUtil->edges[face];
 //            const btConvexHullComputer ::Edge * edge = firstEdge;
 //
-//            btVector3 edges [3];
+//            Vec3 edges [3];
 //            int numEdges = 0;
 //            //compute face normals
 //
@@ -75,10 +77,10 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 //                int src = edge->getSourceVertex();
 //                tmpFaces[i].m_indices.push_back(src);
 //                int targ = edge->getTargetVertex();
-//                btVector3 wa = convexUtil->vertices[src];
+//                Vec3 wa = convexUtil->vertices[src];
 //
-//                btVector3 wb = convexUtil->vertices[targ];
-//                btVector3 newEdge = wb -wa;
+//                Vec3 wb = convexUtil->vertices[targ];
+//                Vec3 newEdge = wb -wa;
 //                newEdge.normalize();
 //                if (numEdges < 2)
 //                    edges[numEdges++] = newEdge;
@@ -127,12 +129,12 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 //            btFace& faceA = tmpFaces[refFace];
 //            todoFaces.pop_back();
 //
-//            btVector3 faceNormalA (faceA.m_plane[0], faceA.m_plane[1], faceA.m_plane[2]);
+//            Vec3 faceNormalA (faceA.m_plane[0], faceA.m_plane[1], faceA.m_plane[2]);
 //            for (int j = todoFaces.size() - 1;j >= 0;j--)
 //            {
 //                int i = todoFaces [j];
 //                btFace& faceB = tmpFaces[i];
-//                btVector3 faceNormalB (faceB.m_plane[0], faceB.m_plane[1], faceB.m_plane[2]);
+//                Vec3 faceNormalB (faceB.m_plane[0], faceB.m_plane[1], faceB.m_plane[2]);
 //                if (faceNormalA.dot(faceNormalB) > faceWeldThreshold) {
 //                    coplanarFaceGroup.push_back(i);
 //                    todoFaces.remove(i);
@@ -145,19 +147,19 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 //                //do the merge: use Graham Scan 2d convex hull
 //
 //                btAlignedObjectArray<GrahamVector3> orgpoints;
-//                btVector3 averageFaceNormal (0, 0, 0);
+//                Vec3 averageFaceNormal (0, 0, 0);
 //
 //                for (int i = 0;i < coplanarFaceGroup.size();i++)
 //                {
 //                    //				m_polyhedron->m_faces.push_back(tmpFaces[coplanarFaceGroup[i]]);
 //
 //                    btFace& face = tmpFaces[coplanarFaceGroup[i]];
-//                    btVector3 faceNormal (face.m_plane[0], face.m_plane[1], face.m_plane[2]);
+//                    Vec3 faceNormal (face.m_plane[0], face.m_plane[1], face.m_plane[2]);
 //                    averageFaceNormal += faceNormal;
 //                    for (int f = 0;f < face.m_indices.size();f++)
 //                    {
 //                        int orgIndex = face . m_indices [f];
-//                        btVector3 pt = m_polyhedron->m_vertices[orgIndex];
+//                        Vec3 pt = m_polyhedron->m_vertices[orgIndex];
 //
 //                        bool found = false;
 //
@@ -257,13 +259,171 @@ open class PolyhedralConvexShape : ConvexInternalShape() {
 //        return true;
     }
 
-    open fun getNumVertices() = 0
-    //    virtual int getNumEdges() const = 0;
-//    virtual void getEdge(int i,btVector3& pa,btVector3& pb) const = 0;
+    //brute force implementations
+
+    override fun localGetSupportingVertexWithoutMargin(vec: Vec3): Vec3 {
+
+        val supVec = Vec3()
+        var maxDot = -LARGE_FLOAT
+
+        val vec = Vec3(vec)
+        val lenSqr = vec.length2()
+        if (lenSqr < 0.0001f)
+            vec.put(1f, 0f, 0f)
+        else
+            vec *= 1f / sqrt(lenSqr)    // rlen
+
+        val vtx = Vec3()
+        var newDot = 0f
+        var i = 0
+        val p = FloatArray(1)
+        for (k in 0 until numVertices step 128) {
+            val temp = Array(128, { Vec3() })
+            val innerCount = min(numVertices - k, 128)
+            i = 0
+            while (i < innerCount) {
+                getVertex(i, temp[i])
+                i++
+            }
+            i = vec.maxDot(temp, innerCount, p)
+            newDot = p[0]
+            if (newDot > maxDot) {
+                maxDot = newDot
+                supVec put temp[i]
+            }
+        }
+        return supVec
+    }
+
+    override fun batchedUnitVectorGetSupportingVertexWithoutMargin(vectors: Array<Vec3>, supportVerticesOut: Array<Vec3>,
+                                                                   numVectors: Int) {
+
+        var i = 0
+
+        val vtx = Vec3()
+        var newDot = 0f
+        val p = FloatArray(1)
+
+        while (i < numVectors) {
+            supportVerticesOut[i][3] = -LARGE_FLOAT
+            i++
+        }
+
+        for (j in 0 until numVectors) {
+            val vec = vectors[j]
+
+            for (k in 0 until numVertices step 128) {
+                val temp = Array(128, { Vec3() })
+                val innerCount = min(numVertices - k, 128)
+                i = 0
+                while (i < innerCount) {
+                    getVertex(i, temp[i])
+                    i++
+                }
+                i = vec.maxDot(temp, innerCount, p)
+                newDot = p[0]
+                if (newDot > supportVerticesOut[j][3]) {
+                    supportVerticesOut[j] = temp[i]
+                    supportVerticesOut[j][3] = newDot
+                }
+            }
+        }
+    }
+
+    override fun calculateLocalInertia(mass: Float, inertia: Vec3) {
+        //not yet, return box inertia
+
+        val ident = Transform()
+        ident.setIdentity()
+        val aabbMin = Vec3()
+        val aabbMax = Vec3()
+        getAabb(ident, aabbMin, aabbMax)
+        val halfExtents = (aabbMax - aabbMin) * 0.5f
+
+        val lx = 2f * (halfExtents.x + margin)
+        val ly = 2f * (halfExtents.y + margin)
+        val lz = 2f * (halfExtents.z + margin)
+        val x2 = lx * lx
+        val y2 = ly * ly
+        val z2 = lz * lz
+        val scaledmass = mass * 0.08333333f
+
+        inertia put (scaledmass * Vec3(y2 + z2, x2 + z2, x2 + y2))
+    }
+
+
+    open val numVertices get() = 0
+    open val numEdges get() = 0
+    open fun getEdge(i: Int, pa: Vec3, pb: Vec3) {}
     open fun getVertex(i: Int, vtx: Vec3) {}
-//    virtual int	getNumPlanes() const = 0;
-//    virtual void getPlane(btVector3& planeNormal,btVector3& planeSupport,int i ) const = 0;
-////	virtual int getIndex(int i) const = 0 ;
-//
-//    virtual	bool isInside(const btVector3& pt,btScalar tolerance) const = 0;
+    open val numPlanes get() = 0
+    open fun getPlane(planeNormal: Vec3, planeSupport: Vec3, i: Int) {}
+//	virtual int getIndex(int i) const = 0 ;
+
+    open fun isInside(pt: Vec3, tolerance: Float) = false
+}
+
+/** The btPolyhedralConvexAabbCachingShape adds aabb caching to the btPolyhedralConvexShape */
+open class PolyhedralConvexAabbCachingShape : PolyhedralConvexShape() {
+
+    val localAabbMin = Vec3(1f)
+    val localAabbMax = Vec3(-1f)
+    var isLocalAabbValid = false
+
+    fun setCachedLocalAabb(aabbMin: Vec3, aabbMax: Vec3) {
+        isLocalAabbValid = true
+        localAabbMin put aabbMin
+        localAabbMax put aabbMax
+    }
+
+    fun getCachedLocalAabb(aabbMin: Vec3, aabbMax: Vec3) {
+        assert(isLocalAabbValid)
+        aabbMin put localAabbMin
+        aabbMax put localAabbMax
+    }
+
+    fun getNonvirtualAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3, margin: Float) {
+        //lazy evaluation of local aabb
+        assert(isLocalAabbValid)
+        transformAabb(localAabbMin, localAabbMax, margin, trans, aabbMin, aabbMax)
+    }
+
+    override var localScaling
+        get() = super.localScaling
+        set(value) {
+            super.localScaling = value
+            recalcLocalAabb()
+        }
+
+    override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) = getNonvirtualAabb(trans, aabbMin, aabbMax, margin)
+
+    fun recalcLocalAabb() {
+
+        isLocalAabbValid = true
+
+        val _supporting = arrayOf(
+                Vec3(0f, 0f, 0f),
+                Vec3(0f, 0f, 0f),
+                Vec3(0f, 0f, 0f),
+                Vec3(0f, 0f, 0f),
+                Vec3(0f, 0f, 0f),
+                Vec3(0f, 0f, 0f))
+
+        batchedUnitVectorGetSupportingVertexWithoutMargin(_directions, _supporting, 6)
+
+        for (i in 0..2) {
+            localAabbMax[i] = _supporting[i][i] + collisionMargin
+            localAabbMin[i] = _supporting[i + 3][i] - collisionMargin
+        }
+    }
+
+    companion object {
+        private val _directions = arrayOf(
+                Vec3(1f, 0f, 0f),
+                Vec3(0f, 1f, 0f),
+                Vec3(0f, 0f, 1f),
+                Vec3(-1f, 0f, 0f),
+                Vec3(0f, -1f, 0f),
+                Vec3(0f, 0f, -1f))
+    }
 }

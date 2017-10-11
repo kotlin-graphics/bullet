@@ -14,7 +14,7 @@ open class Vec3 {
     constructor()
     constructor(number: Number) : this(number.f)
     constructor(float: Float) : this(float, float, float)
-    constructor(floats: FloatArray) : this(floats[0], floats[1], floats[2])
+    constructor(floats: FloatArray, pos: Int = 0) : this(floats[pos], floats[pos + 1], floats[pos + 2])
     constructor(v: Vec3) : this(v.x, v.y, v.z)
     constructor(x: Number, y: Number, z: Number) : this(x.f, y.f, z.f)
     constructor(x: Float, y: Float, z: Float) {
@@ -57,10 +57,14 @@ open class Vec3 {
         else -> throw Error()
     }
 
+    operator fun invoke(v: Vec3) = put(v)
+    operator fun invoke(x: Float, y: Float, z: Float) = put(x, y, z)
+
     operator fun unaryMinus() = Vec3(-x, -y, -z)
     operator fun plus(v: Vec3) = Vec3(x + v.x, y + v.y, z + v.z)
     operator fun plus(f: Float) = Vec3(x + f, y + f, z + f)
     operator fun minus(v: Vec3) = Vec3(x - v.x, y - v.y, z - v.z)
+    operator fun minus(f: Float) = Vec3(x - f, y - f, z - f)
     operator fun times(v: Vec3) = Vec3(x * v.x, y * v.y, z * v.z)
     operator fun times(f: Float) = Vec3(x * f, y * f, z * f)
     operator fun div(v: Vec3) = Vec3(x / v.x, y / v.y, z / v.z)
@@ -70,6 +74,12 @@ open class Vec3 {
         x += v.x
         y += v.y
         z += v.z
+    }
+
+    infix operator fun plusAssign(f: Float) {
+        x += f
+        y += f
+        z += f
     }
 
     infix operator fun minusAssign(v: Vec3) {
@@ -270,9 +280,34 @@ open class Vec3 {
     /** create a vector as  Vec3( this->dot( Vec3 v0 ), this->dot( Vec3 v1), this->dot( Vec3 v2 ))  */
     fun dot3(v0: Vec3, v1: Vec3, v2: Vec3) = Vec3(dot(v0), dot(v1), dot(v2))
 
+    infix fun dot3(m: Mat3) = Vec3(dot(m[0]), dot(m[1]), dot(m[2]))
+    infix fun dot3(a: Array<Vec3>) = Vec3(dot(a[0]), dot(a[1]), dot(a[2]))
+
     override fun equals(other: Any?) = other is Vec3 && x == other.x && y == other.y && z == other.z && w == other.w
     override fun hashCode() = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()) + w.hashCode()
     override fun toString() = "($x, $y, $z, $w)"
+
+    companion object {
+        val size = 4 * 4
+    }
 }
 
 operator fun Float.times(v: Vec3) = Vec3(v.x * this, v.y * this, v.z * this)
+
+fun planeSpace1(n: Vec3, p: Vec3, q: Vec3) {
+    if (abs(n[2]) > SIMDSQRT12) {
+        // choose p in y-z plane
+        val a = n[1] * n[1] + n[2] * n[2]
+        val k = recipSqrt(a)
+        p(0f, -n[2] * k, n[1] * k)
+        // set q = n x p
+        q(a * k, -n[0] * p[2], n[0] * p[1])
+    } else {
+        // choose p in x-y plane
+        val a = n[0] * n[0] + n[1] * n[1]
+        val k = recipSqrt(a)
+        p(-n[1] * k, n[0] * k, 0f)
+        // set q = n x p
+        q(-n[2] * p[1], n[2] * p[0], a * k)
+    }
+}

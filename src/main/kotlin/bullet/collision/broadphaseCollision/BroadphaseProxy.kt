@@ -56,7 +56,9 @@ enum class BroadphaseNativeTypes {
     HFFLUID_BUOYANT_CONVEX_SHAPE_PROXYTYPE,
     INVALID_SHAPE_PROXYTYPE,
 
-    MAX_BROADPHASE_COLLISION_TYPES
+    MAX_BROADPHASE_COLLISION_TYPES;
+    
+    val i = ordinal
 }
 
 /** The BroadphaseProxy is the main class that can be used with the Bullet broadphases.
@@ -102,13 +104,13 @@ class BroadphaseProxy {
 
     companion object {
 
-        fun isPolyhedral(proxyType: Int) = proxyType < IMPLICIT_CONVEX_SHAPES_START_HERE.ordinal
-        fun isConvex(proxyType: Int) = proxyType < CONCAVE_SHAPES_START_HERE.ordinal
-        fun isNonMoving(proxyType: Int) = isConcave(proxyType) && proxyType != GIMPACT_SHAPE_PROXYTYPE.ordinal
-        fun isConcave(proxyType: Int) = proxyType > CONCAVE_SHAPES_START_HERE.ordinal && proxyType < CONCAVE_SHAPES_END_HERE.ordinal
-        fun isCompound(proxyType: Int) = proxyType == COMPOUND_SHAPE_PROXYTYPE.ordinal
-        fun isSoftBody(proxyType: Int) = proxyType == SOFTBODY_SHAPE_PROXYTYPE.ordinal
-        fun isInfinite(proxyType: Int) = proxyType == STATIC_PLANE_PROXYTYPE.ordinal
-        fun isConvex2d(proxyType: Int) = proxyType == BOX_2D_SHAPE_PROXYTYPE.ordinal || proxyType == CONVEX_2D_SHAPE_PROXYTYPE.ordinal
+        fun isPolyhedral(proxyType: Int) = proxyType < IMPLICIT_CONVEX_SHAPES_START_HERE.i
+        fun isConvex(proxyType: Int) = proxyType < CONCAVE_SHAPES_START_HERE.i
+        fun isNonMoving(proxyType: Int) = isConcave(proxyType) && proxyType != GIMPACT_SHAPE_PROXYTYPE.i
+        fun isConcave(proxyType: Int) = proxyType > CONCAVE_SHAPES_START_HERE.i && proxyType < CONCAVE_SHAPES_END_HERE.i
+        fun isCompound(proxyType: Int) = proxyType == COMPOUND_SHAPE_PROXYTYPE.i
+        fun isSoftBody(proxyType: Int) = proxyType == SOFTBODY_SHAPE_PROXYTYPE.i
+        fun isInfinite(proxyType: Int) = proxyType == STATIC_PLANE_PROXYTYPE.i
+        fun isConvex2d(proxyType: Int) = proxyType == BOX_2D_SHAPE_PROXYTYPE.i || proxyType == CONVEX_2D_SHAPE_PROXYTYPE.i
     }
 }
