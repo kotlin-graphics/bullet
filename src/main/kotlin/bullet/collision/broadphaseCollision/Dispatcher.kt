@@ -15,6 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
+import bullet.collision.collisionDispatch.CollisionObject
 import bullet.collision.collisionDispatch.CollisionObjectWrapper
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.linearMath.DebugDraw
@@ -44,32 +45,32 @@ enum class DispatcherQueryType { Invalid, CONTACT_POINT_ALGORITHMS, CLOSEST_POIN
  *  callbacks (game logic). */
 interface Dispatcher {
 
-    fun findAlgorithm(body0Wrap: CollisionObjectWrapper,body1Wrap:CollisionObjectWrapper,sharedManifold: PersistentManifold,
+    fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold,
                       queryType: DispatcherQueryType): CollisionAlgorithm
 
-    virtual btPersistentManifold*	getNewManifold(const btCollisionObject* b0,const btCollisionObject* b1)=0;
+    fun getNewManifold(b0: CollisionObject, b1: CollisionObject): PersistentManifold
 
-    virtual void releaseManifold(btPersistentManifold* manifold)=0;
+    fun releaseManifold(manifold: PersistentManifold)
 
-    virtual void clearManifold(btPersistentManifold* manifold)=0;
+    fun clearManifold(manifold: PersistentManifold)
 
-    virtual bool	needsCollision(const btCollisionObject* body0,const btCollisionObject* body1) = 0;
+    fun needsCollision(body0: CollisionObject, body1: CollisionObject): Boolean
 
-    virtual bool	needsResponse(const btCollisionObject* body0,const btCollisionObject* body1)=0;
+    fun needsResponse(body0: CollisionObject, body1: CollisionObject): Boolean
 
-    virtual void	dispatchAllCollisionPairs(btOverlappingPairCache* pairCache,const btDispatcherInfo& dispatchInfo,btDispatcher* dispatcher)  =0;
+    fun dispatchAllCollisionPairs(pairCache: OverlappingPairCache, dispatchInfo: DispatcherInfo, dispatcher: Dispatcher) = 0;
 
-    virtual int getNumManifolds() const = 0;
+    val numManifolds: Int
 
-    virtual btPersistentManifold* getManifoldByIndexInternal(int index) = 0;
+    fun getManifoldByIndexInternal(index: Int): PersistentManifold
 
-    virtual	btPersistentManifold**	getInternalManifoldPointer() = 0;
+    val internalManifoldPointer: PersistentManifold // TODO virtual	btPersistentManifold**	getInternalManifoldPointer() = 0;
 
-    virtual	btPoolAllocator*	getInternalManifoldPool() = 0;
+//    virtual    btPoolAllocator*    getInternalManifoldPool() = 0;
 
-    virtual	const btPoolAllocator*	getInternalManifoldPool() const = 0;
+//    virtual    const btPoolAllocator*    getInternalManifoldPool() const = 0;
 
-    virtual	void* allocateCollisionAlgorithm(int size)  = 0;
+    fun allocateCollisionAlgorithm(size: Int)
 
-    virtual	void freeCollisionAlgorithm(void* ptr) = 0;
+    fun freeCollisionAlgorithm(ptr: Any?)
 }

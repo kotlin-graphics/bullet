@@ -15,9 +15,12 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
+import bullet.collision.collisionDispatch.CollisionObject
 import bullet.collision.collisionDispatch.CollisionObjectWrapper
+import bullet.collision.collisionDispatch.ManifoldResult
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 
+typealias ManifoldArray = Array<PersistentManifold>
 
 class CollisionAlgorithmConstructionInfo(var dispatcher: Dispatcher? = null, var manifold: PersistentManifold? = null)
 
@@ -35,7 +38,8 @@ abstract class CollisionAlgorithm {
     abstract fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo,
                                   resultOut: ManifoldResult)
 
-    virtual btScalar calculateTimeOfImpact(btCollisionObject* body0,btCollisionObject* body1,const btDispatcherInfo& dispatchInfo,btManifoldResult* resultOut) = 0;
+    abstract fun calculateTimeOfImpact(body0: CollisionObject, body1: CollisionObject, dispatchInfo: DispatcherInfo,
+                                       resultOut: ManifoldResult): Float
 
-    virtual    void    getAllContactManifolds(btManifoldArray&    manifoldArray) = 0;
-};
+    abstract fun getAllContactManifolds(manifoldArray: ManifoldArray)
+}

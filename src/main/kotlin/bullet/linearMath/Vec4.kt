@@ -2,6 +2,7 @@ package bullet.linearMath
 
 import kotlin.math.abs
 
+// TODO move same place an Bullet
 class Vec4 : Vec3 {
 
     constructor() : super()

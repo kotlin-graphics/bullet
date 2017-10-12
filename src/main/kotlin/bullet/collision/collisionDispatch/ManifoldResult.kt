@@ -18,11 +18,16 @@ package bullet.collision.collisionDispatch
 import bullet.collision.narrowPhaseCollision.DiscreteCollisionDetectorInterface
 import bullet.collision.narrowPhaseCollision.ManifoldPoint
 import bullet.collision.narrowPhaseCollision.PersistentManifold
+import bullet.collision.narrowPhaseCollision.contactStartedCallback
 import bullet.has
 import bullet.linearMath.Vec3
 import bullet.linearMath.planeSpace1
 import bullet.collision.collisionDispatch.CollisionObject.CollisionFlags as CF
 import bullet.collision.narrowPhaseCollision.ContactPointFlags as CPF
+
+typealias ContactAddedCallback = (ManifoldPoint, CollisionObjectWrapper, Int, Int, CollisionObjectWrapper, Int, Int) -> Boolean
+/** This is to allow MaterialCombiner/Custom Friction/Restitution values    */
+var contactAddedCallback: ContactAddedCallback? = null
 
 /** ManifoldResult is a helper class to manage  contact results.    */
 class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
@@ -58,6 +63,8 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val manifoldPtr = manifoldPtr!!
         val body0Wrap = body0Wrap!!
         val body1Wrap = body1Wrap!!
+        val co0 = body0Wrap.collisionObject!!
+        val co1 = body0Wrap.collisionObject!!
         //order in manifold needs to match
 
         if (depth > manifoldPtr.contactBreakingThreshold)
@@ -73,11 +80,11 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val localB: Vec3
 
         if (isSwapped) {
-            localA = body1Wrap.collisionObject!!.worldTransform.invXform(pointA)
-            localB = body0Wrap.collisionObject!!.worldTransform.invXform(pointInWorld)
+            localA = co1.worldTransform.invXform(pointA)
+            localB = co0.worldTransform.invXform(pointInWorld)
         } else {
-            localA = body0Wrap.collisionObject!!.worldTransform.invXform(pointA)
-            localB = body1Wrap.collisionObject!!.worldTransform.invXform(pointInWorld)
+            localA = co0.worldTransform.invXform(pointA)
+            localB = co1.worldTransform.invXform(pointInWorld)
         }
 
         val newPt = ManifoldPoint(localA, localB, normalOnBInWorld, depth)
@@ -86,19 +93,17 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
 
         var insertIndex = manifoldPtr.getCacheEntry(newPt)
 
-        newPt.combinedFriction = calculateCombinedFriction(body0Wrap.collisionObject, body1Wrap.collisionObject)
-        newPt.combinedRestitution = calculateCombinedRestitution(body0Wrap.collisionObject, body1Wrap.collisionObject)
-        newPt.combinedRollingFriction = calculateCombinedRollingFriction(body0Wrap.collisionObject, body1Wrap.collisionObject)
-        newPt.combinedSpinningFriction = calculateCombinedSpinningFriction(body0Wrap.collisionObject, body1Wrap.collisionObject)
+        newPt.combinedFriction = calculateCombinedFriction(co0, co1)
+        newPt.combinedRestitution = calculateCombinedRestitution(co0, co1)
+        newPt.combinedRollingFriction = calculateCombinedRollingFriction(co0, co1)
+        newPt.combinedSpinningFriction = calculateCombinedSpinningFriction(co0, co1)
 
-        if (body0Wrap.collisionObject!!.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i ||
-                body1Wrap.collisionObject!!.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i) {
-            newPt.combinedContactDamping1 = calculateCombinedContactDamping(body0Wrap.collisionObject, body1Wrap.collisionObject)
-            newPt.combinedContactStiffness1 = calculateCombinedContactStiffness(body0Wrap.collisionObject, body1Wrap.collisionObject)
+        if (co0.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i || co1.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i) {
+            newPt.combinedContactDamping1 = calculateCombinedContactDamping(co0, co1)
+            newPt.combinedContactStiffness1 = calculateCombinedContactStiffness(co0, co1)
             newPt.contactPointFlags = newPt.contactPointFlags or CPF.CONTACT_STIFFNESS_DAMPING.i
         }
-        if (body0Wrap.collisionObject!!.collisionFlags has CF.HAS_FRICTION_ANCHOR.i ||
-                body1Wrap.collisionObject!!.collisionFlags has CF.HAS_FRICTION_ANCHOR.i)
+        if (co0.collisionFlags has CF.HAS_FRICTION_ANCHOR.i || co1.collisionFlags has CF.HAS_FRICTION_ANCHOR.i)
             newPt.contactPointFlags = newPt.contactPointFlags or CPF.FRICTION_ANCHOR.i
 
         planeSpace1(newPt.normalWorldOnB, newPt.lateralFrictionDir1, newPt.lateralFrictionDir2)
@@ -118,85 +123,75 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         //printf("depth=%f\n",depth);
         ///@todo, check this for any side effects
         if (insertIndex >= 0)
-            //const btManifoldPoint& oldPoint = m_manifoldPtr->getContactPoint(insertIndex);
+        //const btManifoldPoint& oldPoint = m_manifoldPtr->getContactPoint(insertIndex);
             manifoldPtr.replaceContactPoint(newPt, insertIndex)
         else
             insertIndex = manifoldPtr.addManifoldPoint(newPt)
 
-
         //User can override friction and/or restitution
-        if (contactAddedCallback &&
-                //and if either of the two bodies requires custom material
-                ((m_body0Wrap->getCollisionObject()->getCollisionFlags() & btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK) ||
-        (m_body1Wrap->getCollisionObject()->getCollisionFlags() & btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK)))
-        {
-            //experimental feature info, for per-triangle material etc.
-            const btCollisionObjectWrapper * obj0Wrap = isSwapped ? m_body1Wrap : m_body0Wrap
-                    const btCollisionObjectWrapper * obj1Wrap = isSwapped ? m_body0Wrap : m_body1Wrap
-                    ( * gContactAddedCallback)(m_manifoldPtr->getContactPoint(insertIndex), obj0Wrap, newPt.m_partId0, newPt.m_index0, obj1Wrap, newPt.m_partId1, newPt.m_index1)
-        }
-
-        if (gContactStartedCallback && isNewCollision) {
-            gContactStartedCallback(m_manifoldPtr)
-        }
-    }
-
-    SIMD_FORCE_INLINE    void refreshContactPoints()
-    {
-        btAssert(m_manifoldPtr)
-        if (!m_manifoldPtr->getNumContacts())
-        return
-
-        bool isSwapped = m_manifoldPtr->getBody0() != m_body0Wrap->getCollisionObject()
-
-        if (isSwapped)
-            { m_manifoldPtr ->
-                refreshContactPoints(m_body1Wrap->getCollisionObject()->getWorldTransform(), m_body0Wrap->getCollisionObject()->getWorldTransform())
-            } else
-            { m_manifoldPtr ->
-                refreshContactPoints(m_body0Wrap->getCollisionObject()->getWorldTransform(), m_body1Wrap->getCollisionObject()->getWorldTransform())
+        contactAddedCallback?.let {
+            //and if either of the two bodies requires custom material
+            if (co0.collisionFlags has CF.CUSTOM_MATERIAL_CALLBACK.i || co1.collisionFlags has CF.CUSTOM_MATERIAL_CALLBACK.i) {
+                //experimental feature info, for per-triangle material etc.
+                val obj0Wrap = if (isSwapped) body1Wrap else body0Wrap
+                val obj1Wrap = if (isSwapped) body0Wrap else body1Wrap
+                it(manifoldPtr.getContactPoint(insertIndex), obj0Wrap, newPt.partId0, newPt.index0, obj1Wrap, newPt.partId1, newPt.index1)
             }
+        }
+        contactStartedCallback?.let { if (isNewCollision) it(manifoldPtr) }
     }
 
-    const btCollisionObjectWrapper* getBody0Wrap()
-    const
-    {
-        return m_body0Wrap
-    }
-    const btCollisionObjectWrapper* getBody1Wrap()
-    const
-    {
-        return m_body1Wrap
-    }
-
-    void setBody0Wrap(const btCollisionObjectWrapper* obj0Wrap)
-    {
-        m_body0Wrap = obj0Wrap
+    fun refreshContactPoints() {
+        val manifoldPtr = manifoldPtr!!
+        if (manifoldPtr.numContacts == 0) return
+        val co0 = body0Wrap!!.collisionObject!!
+        val co1 = body1Wrap!!.collisionObject!!
+        if (manifoldPtr.body0 !== body0Wrap!!.collisionObject)  // is swapped
+            manifoldPtr.refreshContactPoints(co1.worldTransform, co0.worldTransform)
+        else
+            manifoldPtr.refreshContactPoints(co0.worldTransform, co1.worldTransform)
     }
 
-    void setBody1Wrap(const btCollisionObjectWrapper* obj1Wrap)
-    {
-        m_body1Wrap = obj1Wrap
+    val body0Internal get() = body0Wrap!!.collisionObject
+    val body1Internal get() = body1Wrap!!.collisionObject
+
+    companion object {
+
+        val MAX_FRICTION = 10f
+
+        // in the future we can let the user override the methods to combine restitution and friction
+        fun calculateCombinedRestitution(body0: CollisionObject, body1: CollisionObject) = body0.restitution * body1.restitution
+
+        /** User can override this material combiner by implementing contactAddedCallback and setting
+         *  body0.collisionFlags |= CollisionObject.customMaterialCallback  */
+        fun calculateCombinedFriction(body0: CollisionObject, body1: CollisionObject): Float {
+            val friction = body0.friction * body1.friction
+            return when {
+                friction < -MAX_FRICTION -> -MAX_FRICTION
+                friction > MAX_FRICTION -> MAX_FRICTION
+                else -> friction
+            }
+        }
+
+        fun calculateCombinedRollingFriction(body0: CollisionObject, body1: CollisionObject): Float {
+            val friction = body0.rollingFriction * body1.friction + body1.rollingFriction * body0.friction
+            return when {
+                friction < -MAX_FRICTION -> -MAX_FRICTION
+                friction > MAX_FRICTION -> MAX_FRICTION
+                else -> friction
+            }
+        }
+
+        fun calculateCombinedSpinningFriction(body0: CollisionObject, body1: CollisionObject): Float {
+            val friction = body0.spinningFriction * body1.friction + body1.spinningFriction * body0.friction
+            return when {
+                friction < -MAX_FRICTION -> -MAX_FRICTION
+                friction > MAX_FRICTION -> MAX_FRICTION
+                else -> friction
+            }
+        }
+
+        fun calculateCombinedContactDamping(body0: CollisionObject, body1: CollisionObject) = body0.contactDamping + body1.contactDamping
+        fun calculateCombinedContactStiffness(body0: CollisionObject, body1: CollisionObject) = 1f / (1f / body0.contactStiffness + 1f / body1.contactStiffness)
     }
-
-    const btCollisionObject* getBody0Internal()
-    const
-    {
-        return m_body0Wrap->getCollisionObject()
-    }
-
-    const btCollisionObject* getBody1Internal()
-    const
-    {
-        return m_body1Wrap->getCollisionObject()
-    }
-
-
-    /// in the future we can let the user override the methods to combine restitution and friction
-    static btScalar    calculateCombinedRestitution(const btCollisionObject* body0,const btCollisionObject* body1)
-    static btScalar    calculateCombinedFriction(const btCollisionObject* body0,const btCollisionObject* body1)
-    static btScalar calculateCombinedRollingFriction(const btCollisionObject* body0,const btCollisionObject* body1)
-    static btScalar calculateCombinedSpinningFriction(const btCollisionObject* body0,const btCollisionObject* body1)
-    static btScalar calculateCombinedContactDamping(const btCollisionObject* body0,const btCollisionObject* body1)
-    static btScalar calculateCombinedContactStiffness(const btCollisionObject* body0,const btCollisionObject* body1)
 }

@@ -1,3 +1,18 @@
+/*
+Bullet Continuous Collision Detection and Physics Library
+Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
+
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the use of this software.
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
+subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+*/
+
 package bullet.collision.broadphaseCollision
 
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes.*
@@ -57,7 +72,7 @@ enum class BroadphaseNativeTypes {
     INVALID_SHAPE_PROXYTYPE,
 
     MAX_BROADPHASE_COLLISION_TYPES;
-    
+
     val i = ordinal
 }
 
@@ -113,4 +128,40 @@ class BroadphaseProxy {
         fun isInfinite(proxyType: Int) = proxyType == STATIC_PLANE_PROXYTYPE.i
         fun isConvex2d(proxyType: Int) = proxyType == BOX_2D_SHAPE_PROXYTYPE.i || proxyType == CONVEX_2D_SHAPE_PROXYTYPE.i
     }
+}
+
+/** The BroadphasePair class contains a pair of aabb-overlapping objects.
+ *  A Dispatcher can search a CollisionAlgorithm that performs exact/narrowphase collision detection
+ *  on the actual collision shapes. */
+class BroadphasePair {
+
+    var proxy0: BroadphaseProxy? = null
+    var proxy1: BroadphaseProxy? = null
+
+    var algorithm: CollisionAlgorithm? = null
+    /** don't use this data, it will be removed in future version.  */
+    var internalInfo1: Any? = null
+
+    constructor()
+    constructor(other: BroadphasePair) {
+        proxy0 = other.proxy0
+        proxy1 = other.proxy1
+        algorithm = other.algorithm
+        internalInfo1 = other.internalInfo1
+    }
+    constructor(proxy0:BroadphaseProxy,proxy1:BroadphaseProxy)    {
+        //keep them sorted, so the std::set operations work
+        if (proxy0.uniqueId < proxy1.uniqueId) {
+            this.proxy0 = proxy0
+            this.proxy1 = proxy1
+        } else {
+            this.proxy0 = proxy1
+            this.proxy1 = proxy0
+        }
+        algorithm = null
+        internalInfo1 = null
+    }
+
+    override fun equals(other: Any?) = other is BroadphasePair && proxy0 === other.proxy0 && proxy1 == other.proxy1
+    override fun hashCode() = 31 * (proxy0?.hashCode() ?: 0) + (proxy1?.hashCode() ?: 0)
 }
