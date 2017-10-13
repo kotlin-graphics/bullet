@@ -62,3 +62,16 @@ infix fun Int.hasnt(b: Int) = (this and b) == 0
 infix fun Int.wo(b: Int) = this and b.inv()
 
 var DEBUG = true
+
+
+infix fun <T> ArrayList<T>.push(element: T) = add(element)
+fun <T> ArrayList<T>.pop(): T {
+    val last = last()
+    remove(last)
+    return last
+}
+fun <T> ArrayList<T>.swap(index0:Int, index1:Int) {
+    val t = get(index0)
+    set(index0, get(index1))
+    set(index1, t)
+}

@@ -145,7 +145,6 @@ object Mpr {
         val dir = Vec3()
         val va = Vec3()
         val vb = Vec3()
-        var cont = 0
         // vertex 0 is center of portal
         findOrigin(a, b, colDesc, portal.point(0))
 
@@ -209,7 +208,7 @@ object Mpr {
             dot = portal.point(3).v dot dir
             if (dot.isZero || dot < 0f) return -1
 
-            cont = 0
+            var cont = 0
 
             // test if origin is outside (v1, v0, v3) - set v2 as v3 and continue
             va put (portal.point(1).v cross portal.point(3).v)
@@ -271,10 +270,7 @@ object Mpr {
         val origin = zero
 
         val dir = Vec3()
-        var i = 0
         val b = FloatArray(4)
-        var sum = 0f
-        var inv = 0f
         val vec = Vec3()
         val p1 = Vec3()
         val p2 = Vec3()
@@ -294,7 +290,7 @@ object Mpr {
         vec put (portal.point(2).v cross portal.point(1).v)
         b[3] = vec dot portal.point(0).v
 
-        sum = b[0] + b[1] + b[2] + b[3]
+        var sum = b[0] + b[1] + b[2] + b[3]
 
         if (sum.isZero || sum < 0f) {
             b[0] = 0f
@@ -309,7 +305,7 @@ object Mpr {
             sum = b[1] + b[2] + b[3]
         }
 
-        inv = 1f / sum
+        val inv = 1f / sum
 
         p1 put origin   // TODO check copy
         p2 put origin
@@ -347,7 +343,6 @@ object Mpr {
             Minimization of D(t) leads to simple quadratic equation that's solving is straightforward.
             Bonus of this method is witness point for free. */
 
-        var t = 0f
         val d = Vec3()
         val a = Vec3()
 
@@ -357,7 +352,7 @@ object Mpr {
         // precompute vector from P to x0
         a put (x0 - p)
 
-        t = -1f * (a dot d)
+        var t = -1f * (a dot d)
         t /= d.length2()
 
         return when {
@@ -399,8 +394,7 @@ object Mpr {
         val a = Vec3()
         val s: Float
         var t = 0f
-        var dist = 0f
-        var dist2 = 0f
+        var dist: Float
         val witness2 = Vec3()
 
         d1 put (b - x0)
@@ -436,7 +430,7 @@ object Mpr {
         else {
             dist = vec3PointSegmentDist2(pt, x0, b, witness)
 
-            dist2 = vec3PointSegmentDist2(pt, x0, c, witness2)
+            var dist2 = vec3PointSegmentDist2(pt, x0, c, witness2)
             if (dist2 < dist) {
                 dist = dist2
                 witness?.put(witness2)

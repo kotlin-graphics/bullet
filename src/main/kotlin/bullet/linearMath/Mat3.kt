@@ -334,7 +334,6 @@ class Mat3 {
     /** extractRotation is from "A robust method to extract the rotational part of deformations"
      *  See http://dl.acm.org/citation.cfm?doid=2994258.2994269 */
     fun extractRotation(q: Quat, tolerance: Float = 1.0e-9f, maxIter: Int = 100) {
-        var w = 0f
         val a = this
         for (iter in 0 until maxIter) {
             val r = Mat3(q)
@@ -343,7 +342,7 @@ class Mat3 {
             val c = r.getColumn(0).dot(a.getColumn(0)) + r.getColumn(1).dot(a.getColumn(1)) +
                     r.getColumn(2).dot(a.getColumn(2))
             val omega = b * (1f / abs(c) + tolerance)
-            w = omega.norm()
+            val w = omega.norm()
             if (w < tolerance) break
             val v = Vec3((1f / w) * omega)
             q.put(v.x * q.x, v.y * q.y, v.z * q.z, w * q.w)

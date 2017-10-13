@@ -22,5 +22,5 @@ abstract class CollisionAlgorithmCreateFunc {
 
     var swapped = false
 
-    abstract fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo , const btCollisionObjectWrapper* body0Wrap,const btCollisionObjectWrapper* body1Wrap)
+    abstract fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo , body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper)
 }

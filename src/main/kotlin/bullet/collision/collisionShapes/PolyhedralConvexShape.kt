@@ -274,19 +274,17 @@ abstract class PolyhedralConvexShape : ConvexInternalShape() {
             vec *= 1f / sqrt(lenSqr)    // rlen
 
         val vtx = Vec3()
-        var newDot = 0f
-        var i = 0
         val p = FloatArray(1)
         for (k in 0 until numVertices step 128) {
             val temp = Array(128, { Vec3() })
             val innerCount = min(numVertices - k, 128)
-            i = 0
+            var i = 0
             while (i < innerCount) {
                 getVertex(i, temp[i])
                 i++
             }
             i = vec.maxDot(temp, innerCount, p)
-            newDot = p[0]
+            val newDot = p[0]
             if (newDot > maxDot) {
                 maxDot = newDot
                 supVec put temp[i]
@@ -301,7 +299,6 @@ abstract class PolyhedralConvexShape : ConvexInternalShape() {
         var i = 0
 
         val vtx = Vec3()
-        var newDot = 0f
         val p = FloatArray(1)
 
         while (i < numVectors) {
@@ -321,7 +318,7 @@ abstract class PolyhedralConvexShape : ConvexInternalShape() {
                     i++
                 }
                 i = vec.maxDot(temp, innerCount, p)
-                newDot = p[0]
+                val newDot = p[0]
                 if (newDot > supportVerticesOut[j][3]) {
                     supportVerticesOut[j] = temp[i]
                     supportVerticesOut[j][3] = newDot

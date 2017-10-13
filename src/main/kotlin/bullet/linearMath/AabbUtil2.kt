@@ -92,13 +92,12 @@ fun rayAabb(rayFrom: Vec3, rayTo: Vec3, aabbMin: Vec3, aabbMax: Vec3, param: Flo
         var lambdaEnter = 0f
         var lambdaExit = param[0]
         val r = target - source
-        var i = 0
         var normSign = 1f
         val hitNormal = Vec3()
         var bit = 1
 
         for (j in 0..1) {
-            i = 0
+            var i = 0
             while (i != 3) {
                 if (sourceOutcode has bit) {
                     val lambda = (-source[i] - aabbHalfExtent[i] * normSign) / r[i]

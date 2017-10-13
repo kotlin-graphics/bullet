@@ -81,7 +81,7 @@ open class CapsuleShape : ConvexInternalShape {
             vec *= 1f / sqrt(lenSqr)   // rlen
 
         val vtx = Vec3()
-        var newDot = 0f
+        var newDot: Float
 
         run {
             val pos = Vec3()
@@ -114,7 +114,7 @@ open class CapsuleShape : ConvexInternalShape {
             val vec = vectors[j]
 
             val vtx = Vec3()
-            var newDot = 0f
+            var newDot: Float
             run {
                 val pos = Vec3()
                 pos[upAxis] = halfHeight

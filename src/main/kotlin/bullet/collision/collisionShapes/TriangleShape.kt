@@ -27,7 +27,7 @@ class TriangleShape : PolyhedralConvexShape {
 
     fun getVertexPtr(index: Int) = vertices1[index]
 
-    override fun getVertex(index: Int, vert: Vec3) = vert put vertices1[index]
+    override fun getVertex(i: Int, vtx: Vec3) = vtx put vertices1[i]
 
     override val numEdges get() = 3
 
@@ -38,7 +38,7 @@ class TriangleShape : PolyhedralConvexShape {
 
     override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) = getAabbSlow(trans, aabbMin, aabbMax)
 
-    override fun localGetSupportingVertexWithoutMargin(dir: Vec3) = vertices1[(dir dot3 vertices1).maxAxis()]
+    override fun localGetSupportingVertexWithoutMargin(vec: Vec3) = vertices1[(vec dot3 vertices1).maxAxis()]
 
     override fun batchedUnitVectorGetSupportingVertexWithoutMargin(vectors: Array<Vec3>, supportVerticesOut: Array<Vec3>, numVectors: Int) {
         for (i in 0 until numVectors) {

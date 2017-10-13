@@ -117,7 +117,6 @@ object GjkEpaSolver2 {
 
         fun evaluate(shapearg: MinkowskiDiff, guess: Vec3): Status {
             var iterations = 0
-            var sqdist = 0f
             var alpha = 0f
             val lastw = Array(4, { Vec3() })
             var clastw = 0
@@ -138,7 +137,7 @@ object GjkEpaSolver2 {
             appendVertice(simplices[0], if (sqrl > 0) -ray else Vec3(1f, 0f, 0f))
             simplices[0].p[0] = 1f
             ray put simplices[0].c[0].w
-            sqdist = sqrl
+            var sqdist = sqrl
             lastw[0] = Vec3(ray)
             lastw[1] = Vec3(ray)
             lastw[2] = Vec3(ray)

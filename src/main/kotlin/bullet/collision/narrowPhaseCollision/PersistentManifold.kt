@@ -271,7 +271,6 @@ class PersistentManifold : TypedObject {
             i--
         }
         // then
-        var distance2d = 0f
         val projectedDifference = Vec3()
         val projectedPoint = Vec3()
         i = numContacts - 1
@@ -285,7 +284,7 @@ class PersistentManifold : TypedObject {
                     contact also becomes invalid when relative movement orthogonal to normal exceeds margin                 */
                 projectedPoint put mp.positionWorldOnA - mp.normalWorldOnB * mp.distance
                 projectedDifference put mp.positionWorldOnB - projectedPoint
-                distance2d = projectedDifference dot projectedDifference
+                val distance2d = projectedDifference dot projectedDifference
                 if (distance2d > contactBreakingThreshold * contactBreakingThreshold)
                     removeContactPoint(i)
                 else contactProcessedCallback?.invoke(mp, body0, body1) //contact point processed callback

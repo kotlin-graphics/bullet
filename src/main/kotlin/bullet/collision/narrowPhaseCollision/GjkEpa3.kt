@@ -129,7 +129,6 @@ object GjkEpaSolver3 {
 
         fun evaluate(shapearg: MinkowskiDiff, guess: Vec3): GjkStatus {
             var iterations = 0
-            var sqdist = 0f
             var alpha = 0f
             val lastw = Array(4, { Vec3() })
             var clastw = 0
@@ -150,7 +149,7 @@ object GjkEpaSolver3 {
             appendVertice(simplices[0], if (sqrl > 0) -ray else Vec3(1f, 0f, 0f))
             simplices[0].p[0] = 1f
             ray put simplices[0].c[0].w
-            sqdist = sqrl
+            var sqdist = sqrl
             lastw[0] put ray
             lastw[1] put ray
             lastw[2] put ray
@@ -317,13 +316,12 @@ object GjkEpaSolver3 {
             if (l > GJK_SIMPLEX3_EPS) {
                 var mindist = -1f
                 val subw = FloatArray(2)
-                var subm = 0
-                val p = IntArray(1)
+                val pI = IntArray(1)
                 for (i in 0..2)
                     if (vt[i] dot (dl[i] cross n) > 0) {
                         val j = imd3[i]
-                        val subd = projectOrigin(vt[i], vt[j], subw, p)
-                        subm = p[0]
+                        val subd = projectOrigin(vt[i], vt[j], subw, pI)
+                        val subm = pI[0]
                         if (mindist < 0 || subd < mindist) {
                             mindist = subd
                             m[0] = (if (subm has 1) 1 shl i else 0) + if (subm has 2) 1 shl j else 0
@@ -357,14 +355,13 @@ object GjkEpaSolver3 {
             if (ng && abs(vl) > GJK_SIMPLEX4_EPS) {
                 var mindist = -1f
                 val subw = FloatArray(3)
-                var subm = 0
                 val p = IntArray(1)
                 for (i in 0..2) {
                     val j = imd3_[i]
                     val s = vl * (d dot (dl[i] cross dl[j]))
                     if (s > 0) {
                         val subd = projectOrigin(vt[i], vt[j], d, subw, p)
-                        subm = p[0]
+                        val subm = p[0]
                         if (mindist < 0 || subd < mindist) {
                             mindist = subd
                             m[0] = (if (subm has 1) 1 shl i else 0) + (if (subm has 2) 1 shl j else 0) + if (subm has 4) 8 else 0

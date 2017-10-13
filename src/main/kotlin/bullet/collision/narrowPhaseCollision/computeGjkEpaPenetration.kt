@@ -65,7 +65,6 @@ fun computeGjkEpaPenetration(a: ConvexTemplate, b: ConvexTemplate, colDesc: GjkC
 
     run {
         var squaredDistance = LARGE_FLOAT
-        var delta = 0f
 
         val margin = marginA + marginB
 
@@ -83,7 +82,7 @@ fun computeGjkEpaPenetration(a: ConvexTemplate, b: ConvexTemplate, colDesc: GjkC
             val qWorld = localTransB * qInB
 
             val w = pWorld - qWorld
-            delta = cachedSeparatingAxis dot w
+            val delta = cachedSeparatingAxis dot w
 
             // potential exit, they don't overlap
             if (delta > 0f && delta * delta > squaredDistance * colDesc.maximumDistanceSquared) {

@@ -149,7 +149,8 @@ class BroadphasePair {
         algorithm = other.algorithm
         internalInfo1 = other.internalInfo1
     }
-    constructor(proxy0:BroadphaseProxy,proxy1:BroadphaseProxy)    {
+
+    constructor(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy) {
         //keep them sorted, so the std::set operations work
         if (proxy0.uniqueId < proxy1.uniqueId) {
             this.proxy0 = proxy0
@@ -164,4 +165,21 @@ class BroadphasePair {
 
     override fun equals(other: Any?) = other is BroadphasePair && proxy0 === other.proxy0 && proxy1 == other.proxy1
     override fun hashCode() = 31 * (proxy0?.hashCode() ?: 0) + (proxy1?.hashCode() ?: 0)
+}
+
+object BroadphasePairSortPredicate : Comparator<BroadphasePair> {
+    override fun compare(o1: BroadphasePair, o2: BroadphasePair): Int {
+        val uidA0 = o1.proxy0?.uniqueId ?: -1
+        val uidB0 = o2.proxy0?.uniqueId ?: -1
+        val uidA1 = o1.proxy1?.uniqueId ?: -1
+        val uidB1 = o2.proxy1?.uniqueId ?: -1
+
+        return when {
+            uidA0 != uidB0 -> uidA0.compareTo(uidB0)
+            o1.proxy0 === o2.proxy0 && uidA1 != uidB1 -> uidA1.compareTo(uidB1)
+            o1.proxy0 === o2.proxy0 && o1.proxy1 == o2.proxy1 && System.identityHashCode(o1.algorithm) != System.identityHashCode(o2.algorithm) ->
+                System.identityHashCode(o1.algorithm).compareTo(System.identityHashCode(o2.algorithm))
+            else -> 0
+        }
+    }
 }

@@ -78,22 +78,20 @@ fun computeGjkEpaSphereSphereCollision(input: SphereSphereCollisionDescription, 
     val simplexSolver = VoronoiSimplexSolver()
     simplexSolver.reset()
 
-    var res = -1
     ///todo(erwincoumans): improve convex-convex quality and performance
     ///also compare with https://code.google.com/p/bullet/source/browse/branches/PhysicsEffects/src/base_level/collision/pfx_gjk_solver.cpp
-    when (method) {
-        SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN, SSTM.GJKEPA -> res = computeGjkEpaPenetration(a, b, colDesc, simplexSolver, distInfo)
+    return when (method) {
+        SSTM.GJKEPA_RADIUS_NOT_FULL_MARGIN, SSTM.GJKEPA -> computeGjkEpaPenetration(a, b, colDesc, simplexSolver, distInfo)
         SSTM.GJKMPR -> {
-            res = computeGjkDistance(a, b, colDesc, distInfo)
+            val res = computeGjkDistance(a, b, colDesc, distInfo)
             if (res == 0)
             //   printf("use GJK results in distance %f\n",distInfo->m_distance);
-                return res
+                res
             else
-                res = Mpr.computeMprPenetration(a, b, Mpr.CollisionDescription(), distInfo)
+                Mpr.computeMprPenetration(a, b, Mpr.CollisionDescription(), distInfo)
         }
         else -> throw Error()
     }
-    return res
 }
 
 class ConvexWrap : ConvexTemplate {
