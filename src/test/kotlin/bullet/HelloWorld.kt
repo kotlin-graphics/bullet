@@ -15,6 +15,8 @@ subject to the following restrictions:
 
 package bullet
 
+import bullet.collision.broadphaseCollision.DbvtBroadphase
+import bullet.collision.collisionDispatch.CollisionDispatcher
 import bullet.collision.collisionDispatch.DefaultCollisionConfiguration
 import io.kotlintest.specs.StringSpec
 
@@ -23,6 +25,15 @@ class HelloWorld : StringSpec() {
 
     // -----initialization_start-----
 
-    // collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
+    // Collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
     val collisionConfiguration = DefaultCollisionConfiguration()
+
+    // Use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
+    val dispatcher = CollisionDispatcher(collisionConfiguration)
+
+    // DbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
+    val overlappingPairCache = DbvtBroadphase()
+
+    // The default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
+//    SequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
 }

@@ -15,12 +15,14 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.collision.broadphaseCollision.CollisionAlgorithm
 import bullet.collision.broadphaseCollision.CollisionAlgorithmConstructionInfo
 
-/** Used by the btCollisionDispatcher to register and create instances for btCollisionAlgorithm */
+/** Used by the CollisionDispatcher to register and create instances for btCollisionAlgorithm */
 abstract class CollisionAlgorithmCreateFunc {
 
     var swapped = false
 
-    abstract fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo , body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper)
+    abstract fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper)
+            : CollisionAlgorithm
 }

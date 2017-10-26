@@ -61,6 +61,8 @@ infix fun Int.has(b: Int) = (this and b) != 0
 infix fun Int.hasnt(b: Int) = (this and b) == 0
 infix fun Int.wo(b: Int) = this and b.inv()
 
+val Int.Companion.BYTES get() = 4
+
 var DEBUG = true
 
 
@@ -70,7 +72,8 @@ fun <T> ArrayList<T>.pop(): T {
     remove(last)
     return last
 }
-fun <T> ArrayList<T>.swap(index0:Int, index1:Int) {
+
+fun <T> ArrayList<T>.swap(index0: Int, index1: Int) {
     val t = get(index0)
     set(index0, get(index1))
     set(index1, t)

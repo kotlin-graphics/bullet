@@ -77,9 +77,9 @@ enum class BroadphaseNativeTypes {
 }
 
 /** The BroadphaseProxy is the main class that can be used with the Bullet broadphases.
- *  It stores collision shape type information, collision filter information and a client object, typically a
- *  CollisionObject or RigidBody.   */
-class BroadphaseProxy {
+ *  It stores collision shape type information, collision filter information and a client object,
+ *  typically a CollisionObject or RigidBody.   */
+open class BroadphaseProxy {
 
     /** optional filtering to cull potential collisions */
     enum class CollisionFilterGroups(val i: Int) {
@@ -94,7 +94,7 @@ class BroadphaseProxy {
     }
 
     /** Usually the client btCollisionObject or Rigidbody class */
-//    void*    m_clientObject;
+    var clientObject: Any? = null
     var collisionFilterGroup = 0
     var collisionFilterMask = 0
 

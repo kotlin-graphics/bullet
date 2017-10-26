@@ -45,32 +45,32 @@ enum class DispatcherQueryType { Invalid, CONTACT_POINT_ALGORITHMS, CLOSEST_POIN
  *  callbacks (game logic). */
 interface Dispatcher {
 
-    fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold,
+    fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold?,
                       queryType: DispatcherQueryType): CollisionAlgorithm
 
-    fun getNewManifold(b0: CollisionObject, b1: CollisionObject): PersistentManifold
+    fun getNewManifold(body0: CollisionObject, body1: CollisionObject): PersistentManifold
 
     fun releaseManifold(manifold: PersistentManifold)
 
     fun clearManifold(manifold: PersistentManifold)
 
-    fun needsCollision(body0: CollisionObject, body1: CollisionObject): Boolean
+    fun needsCollision(body0: CollisionObject?, body1: CollisionObject?): Boolean
 
     fun needsResponse(body0: CollisionObject, body1: CollisionObject): Boolean
 
-    fun dispatchAllCollisionPairs(pairCache: OverlappingPairCache, dispatchInfo: DispatcherInfo, dispatcher: Dispatcher) = 0;
+    fun dispatchAllCollisionPairs(pairCache: OverlappingPairCache, dispatchInfo: DispatcherInfo, dispatcher: Dispatcher)
 
     val numManifolds: Int
 
     fun getManifoldByIndexInternal(index: Int): PersistentManifold
 
-    val internalManifoldPointer: PersistentManifold // TODO virtual	btPersistentManifold**	getInternalManifoldPointer() = 0;
+    val internalManifoldPointer: ArrayList<PersistentManifold>? // TODO virtual	btPersistentManifold**	getInternalManifoldPointer() = 0;
 
 //    virtual    btPoolAllocator*    getInternalManifoldPool() = 0;
 
 //    virtual    const btPoolAllocator*    getInternalManifoldPool() const = 0;
 
-    fun allocateCollisionAlgorithm(size: Int)
+    fun allocateCollisionAlgorithm(size: Int): Any?
 
     fun freeCollisionAlgorithm(ptr: Any?)
 }

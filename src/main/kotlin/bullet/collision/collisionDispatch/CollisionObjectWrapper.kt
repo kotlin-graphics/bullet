@@ -3,12 +3,12 @@ package bullet.collision.collisionDispatch
 import bullet.collision.collisionShapes.CollisionShape
 import bullet.linearMath.Transform
 
-abstract class CollisionObjectWrapper {
+class CollisionObjectWrapper {
 
     /** not implemented. Not allowed.   */
-    private constructor(collisionObjectWrapper: CollisionObjectWrapper)
+    private constructor(collisionObjectWrapper: CollisionObjectWrapper?)
 
-    abstract infix fun put(collisionObjectWrapper: CollisionObjectWrapper): CollisionObjectWrapper
+//    open infix fun put(collisionObjectWrapper: CollisionObjectWrapper) = CollisionObjectWrapper(null) TODO
 
     var parent: CollisionObjectWrapper? =null
     var shape:CollisionShape?=null
@@ -18,7 +18,7 @@ abstract class CollisionObjectWrapper {
     var index =0
 
     // TODO check constructors
-    constructor(parent: CollisionObjectWrapper, shape: CollisionShape, collisionObject: CollisionObject, worldTransform: Transform,
+    constructor(parent: CollisionObjectWrapper?, shape: CollisionShape?, collisionObject: CollisionObject, worldTransform: Transform,
                 partId: Int, index: Int) {
         this.parent = parent
         this.shape = shape
