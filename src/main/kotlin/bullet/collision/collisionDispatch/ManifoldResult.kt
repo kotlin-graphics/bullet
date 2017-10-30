@@ -80,11 +80,11 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val localB: Vec3
 
         if (isSwapped) {
-            localA = co1.worldTransform.invXform(pointA)
-            localB = co0.worldTransform.invXform(pointInWorld)
+            localA = co1.getWorldTransform().invXform(pointA)
+            localB = co0.getWorldTransform().invXform(pointInWorld)
         } else {
-            localA = co0.worldTransform.invXform(pointA)
-            localB = co1.worldTransform.invXform(pointInWorld)
+            localA = co0.getWorldTransform().invXform(pointA)
+            localB = co1.getWorldTransform().invXform(pointInWorld)
         }
 
         val newPt = ManifoldPoint(localA, localB, normalOnBInWorld, depth)
@@ -147,9 +147,9 @@ class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val co0 = body0Wrap!!.collisionObject!!
         val co1 = body1Wrap!!.collisionObject!!
         if (manifoldPtr.body0 !== body0Wrap!!.collisionObject)  // is swapped
-            manifoldPtr.refreshContactPoints(co1.worldTransform, co0.worldTransform)
+            manifoldPtr.refreshContactPoints(co1.getWorldTransform(), co0.getWorldTransform())
         else
-            manifoldPtr.refreshContactPoints(co0.worldTransform, co1.worldTransform)
+            manifoldPtr.refreshContactPoints(co0.getWorldTransform(), co1.getWorldTransform())
     }
 
     val body0Internal get() = body0Wrap!!.collisionObject

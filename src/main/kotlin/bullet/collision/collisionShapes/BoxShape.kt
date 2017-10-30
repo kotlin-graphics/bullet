@@ -178,13 +178,15 @@ class BoxShape(boxHalfExtents: Vec3) : PolyhedralConvexShape() {
 
     override fun getNumPreferredPenetrationDirections() = 6
 
-    override fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) = when (index) {
-        0 -> penetrationVector.put(1f, 0f, 0f)
-        1 -> penetrationVector.put(-1f, 0f, 0f)
-        2 -> penetrationVector.put(0f, 1f, 0f)
-        3 -> penetrationVector.put(0f, -1f, 0f)
-        4 -> penetrationVector.put(0f, 0f, 1f)
-        5 -> penetrationVector.put(0f, 0f, -1f)
-        else -> throw Error()
+    override fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) {
+        when (index) {
+            0 -> penetrationVector.put(1f, 0f, 0f)
+            1 -> penetrationVector.put(-1f, 0f, 0f)
+            2 -> penetrationVector.put(0f, 1f, 0f)
+            3 -> penetrationVector.put(0f, -1f, 0f)
+            4 -> penetrationVector.put(0f, 0f, 1f)
+            5 -> penetrationVector.put(0f, 0f, -1f)
+            else -> throw Error()
+        }
     }
 }

@@ -297,7 +297,7 @@ class Mat3 {
 
     /** Solve A * x = b, where b is a column vector. This is more efficient than computing the inverse in one-shot cases.
      *  Solve33 is from Box2d, thanks to Erin Catto,    */
-    fun solve33(b: Vec3): Vec3 {
+    infix fun solve33(b: Vec3): Vec3 {
         val col1 = getColumn(0)
         val col2 = getColumn(1)
         val col3 = getColumn(2)

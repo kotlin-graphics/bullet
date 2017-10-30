@@ -17,6 +17,8 @@ subject to the following restrictions:
 package bullet.collision.broadphaseCollision
 
 import bullet.BYTES
+import bullet.dynamics.constraintSolver.SolverConstraint
+import bullet.dynamics.constraintSolver.TypedConstraint
 import bullet.i
 import bullet.linearMath.Vec3
 import bullet.linearMath.rayAabb2
@@ -823,6 +825,9 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
             is Dbvt.StkNN -> for (i in size until newSize) add(Dbvt.StkNN() as T)
             is DbvtNode -> for (i in size until newSize) add(DbvtNode() as T)
             is BroadphasePair -> for (i in size until newSize) add(BroadphasePair() as T)
+            is TypedConstraint.ConstraintInfo1 -> for (i in size until newSize) add(TypedConstraint.ConstraintInfo1() as T)
+            is SolverConstraint -> for (i in size until newSize) add(SolverConstraint() as T)
+            is Int -> for (i in size until newSize) add(0 as T)
         }
     }
 }

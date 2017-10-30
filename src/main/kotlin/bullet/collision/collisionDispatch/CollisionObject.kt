@@ -26,7 +26,7 @@ import bullet.linearMath.Vec3
 import bullet.wo
 import bullet.collision.collisionDispatch.CollisionObject.AnisotropicFrictionFlags as AFF
 import bullet.collision.collisionDispatch.CollisionObject.CollisionFlags as CF
-import bullet.collision.collisionDispatch.CollisionObject.CollisionObjectTypes as COT
+import bullet.collision.collisionDispatch.CollisionObject.CollisionObjectTypes as Cot
 
 
 //island management, m_activationState1
@@ -40,33 +40,45 @@ val DISABLE_SIMULATION = 5
 /** CollisionObject can be used to manage collision detection objects.
  *  CollisionObject maintains all information that is needed for a collision detection: Shape, Transform and AABB proxy.
  *  They can be added to the CollisionWorld.  */
-class CollisionObject {
+open class CollisionObject {
 
-    var worldTransform = Transform().apply { setIdentity() }
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    protected val _worldTransform = Transform().apply { setIdentity() }
+    fun setWorldTransform(worldTrans: Transform) {
+        updateRevision++
+        _worldTransform put worldTrans
+    }
+
+    fun getWorldTransform() = _worldTransform
 
     /** interpolationWorldTransform is used for CCD and interpolation
      *  it can be either previous or future (predicted) transform   */
-    var interpolationWorldTransform = Transform().apply { setIdentity() }
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    protected val _interpolationWorldTransform = Transform().apply { setIdentity() }
+
+    fun setInterpolationWorldTransform(trans: Transform) {
+        updateRevision++
+        _interpolationWorldTransform put trans
+    }
+
+    fun getInterpolationWorldTransform() = _interpolationWorldTransform
+
     /** those two are experimental: just added for bullet time effect, so you can still apply impulses (directly modifying
      *  velocities) without destroying the continuous interpolated motion (which uses this interpolation velocities)  */
-    var interpolationLinearVelocity = Vec3() // TODO high potential bug with `put` not triggering the custom setter!!
-        set(value) {
-            updateRevision++
-            field = value
-        }
-    var interpolationAngularVelocity = Vec3() // TODO high potential bug with `put` not triggering the custom setter!!
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    protected val _interpolationLinearVelocity = Vec3()
+
+    fun setInterpolationLinearVelocity(linVel: Vec3) {
+        updateRevision++
+        _interpolationLinearVelocity put linVel
+    }
+
+    fun getInterpolationLinearVelocity() = _interpolationLinearVelocity
+
+    protected val _interpolationAngularVelocity = Vec3()
+    fun setInterpolationAngularVelocity(angVel: Vec3) {
+        updateRevision++
+        _interpolationAngularVelocity put angVel
+    }
+
+    fun getInterpolationAngularVelocity() = _interpolationAngularVelocity
 
     val anisotropicFriction = Vec3(1f)
     protected var hasAnisotropicFriction = AFF.DISABLED
@@ -131,7 +143,7 @@ class CollisionObject {
 
     /** internalType is reserved to distinguish Bullet's CollisionObject, RigidBody, SoftBody, GhostObject etc.
      *  do not assign your own internalType unless you write a new dynamics object class.   */
-    var internalType = COT.COLLISION_OBJECT
+    var internalType = Cot.COLLISION_OBJECT.i
         protected set
 
     /** users can point to their objects, m_userPointer is not used by Bullet   */
@@ -187,6 +199,9 @@ class CollisionObject {
         val i = 1 shl ordinal
     }
 
+    infix fun Int.or(b: CollisionFlags) = or(b.i)
+    infix fun Int.wo(b: CollisionFlags) = and(b.i.inv())
+
     enum class CollisionObjectTypes {
         COLLISION_OBJECT,
         RIGID_BODY,
@@ -199,6 +214,12 @@ class CollisionObject {
         FEATHERSTONE_LINK;
 
         val i = 1 shl ordinal
+    }
+
+    companion object {
+        infix fun Int.or(b: CollisionObjectTypes) = or(b.i)
+        infix fun Int.has(b: CollisionObjectTypes) = (this and b.i) != 0
+        infix fun Int.hasnt(b: CollisionObjectTypes) = (this and b.i) == 0
     }
 
     enum class AnisotropicFrictionFlags { DISABLED, NORMAL, ROLLING;
@@ -215,7 +236,8 @@ class CollisionObject {
         hasAnisotropicFriction = if (isUnity) frictionMode else AFF.DISABLED
     }
 
-    fun hasAnisotropicFriction(frictionMode: AFF = AFF.NORMAL) = hasAnisotropicFriction.i has frictionMode.i
+    fun hasAnisotropicFriction(frictionMode: AFF = AFF.NORMAL) = hasAnisotropicFriction(frictionMode.i)
+    fun hasAnisotropicFriction(frictionMode: Int = AFF.NORMAL.i) = hasAnisotropicFriction.i has frictionMode
     val isStaticObject get() = collisionFlags has CF.STATIC_OBJECT.i
     val isKinematicObject get() = collisionFlags has CF.KINEMATIC_OBJECT.i
     val isStaticOrKinematicObject get() = collisionFlags has (CF.KINEMATIC_OBJECT.i or CF.STATIC_OBJECT.i)
@@ -259,5 +281,5 @@ class CollisionObject {
 
     val ccdSquareMotionThreshold get() = ccdMotionThreshold * ccdMotionThreshold
 
-    fun checkCollideWith(co:CollisionObject) = if (checkCollideWith) checkCollideWithOverride(co) else true
+    fun checkCollideWith(co: CollisionObject) = if (checkCollideWith) checkCollideWithOverride(co) else true
 }

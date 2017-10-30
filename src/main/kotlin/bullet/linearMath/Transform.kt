@@ -55,10 +55,10 @@ class Transform {
     operator fun invoke(x: Vec3) = x.dot3(basis[0], basis[1], basis[2]) + origin
 
     /** @return the transform of the btQuaternion */
-    operator fun times(q: Quat) = getRotation() * q
+    operator fun times(q: Quat) = rotation * q
 
     /** @return a quaternion representing the rotation */
-    fun getRotation(): Quat {
+    val rotation get(): Quat {
         val q = Quat()
         basis.getRotation(q)
         return q
@@ -101,6 +101,11 @@ class Transform {
     infix fun inverseTimes(t: Transform): Transform {
         val v = t.origin - origin
         return Transform(basis transposeTimes t.basis, v * basis)
+    }
+
+    infix fun put(other: Transform) {
+        basis put other.basis
+        origin put other.origin
     }
 
     override fun equals(other: Any?) = other is Transform && basis == other.basis && origin == other.origin

@@ -98,6 +98,13 @@ class Quat {
         yawZ_pitchY_rollX[0] = atan2(2 * (x * y + w * z), squ + sqx - sqy - sqz)
     }
 
+    infix fun put(other: Quat) {
+        x = other.x
+        y = other.y
+        z = other.z
+        w = other.w
+    }
+
     fun put(x: Float, y: Float, z: Float, w: Float = 0f) {
         this.x = x
         this.y = y
@@ -108,6 +115,18 @@ class Quat {
     operator fun plus(q: Quat) = Quat(x + q.x, y + q.y, z + q.z, w + q.w)
     operator fun minus(q: Quat) = Quat(x - q.x, y - q.y, z - q.z, w - q.w)
     operator fun times(f: Float) = Quat(x * f, y * f, z * f, w * f)
+    operator fun times(v: Vec3) = Quat(
+            w * v.x + y * v.z - z * v.y,
+            w * v.y + z * v.x - x * v.z,
+            w * v.z + x * v.y - y * v.x,
+            -x * v.x - y * v.y - z * v.z)
+
+    operator fun timesAssign(q: Quat) = put(
+            w * q.x + x * q.w + y * q.z - z * q.y,
+            w * q.y + y * q.w + z * q.x - x * q.z,
+            w * q.z + z * q.w + x * q.y - y * q.x,
+            w * q.w - x * q.x - y * q.y - z * q.z)
+
     operator fun times(q: Quat) = Quat(
             w * q.x + x * q.w + y * q.z - z * q.y,
             w * q.y + y * q.w + z * q.x - x * q.z,
@@ -128,16 +147,12 @@ class Quat {
     /** @return the length of the quaternion */
     fun length() = sqrt(length2())
 
-//    btQuaternion& safeNormalize()
-//    {
-//        btScalar l2 = length2();
-//        if (l2>SIMD_EPSILON)
-//        {
-//            normalize();
-//        }
-//        return *this;
-//    }
-//
+    fun safeNormalize(): Quat {
+        val l2 = length2()
+        if (l2 > Float.EPSILON) normalize()
+        return this
+    }
+
     /** Normalize the quaternion, such that x^2 + y^2 + z^2 +w^2 = 1    */
     fun normalize() {
         val s = 1f / length()
@@ -160,10 +175,10 @@ class Quat {
     fun angleShortestPath(q: Quat) = acos(dot(if (dot(q) < 0) -q else q) / sqrt(length2() * q.length2())) * 2f
 
     /** @return the angle [0, 2Pi] of rotation represented by this quaternion */
-    fun getAngle() = 2f * acos(w)
+    val angle get() = 2f * acos(w)
 
     /** @return the angle [0, Pi] of rotation represented by this quaternion along the shortest path */
-    fun getAngleShortestPath() = 2f * acos(if (w >= 0) w else -w)
+    val angleShortestPath get() = 2f * acos(if (w >= 0) w else -w)
 
     /** @return the axis of the rotation represented by this quaternion */
     fun getAxis(): Vec3 {
@@ -185,7 +200,7 @@ class Quat {
     }
 
     /**@todo document this and it's use */
-    fun nearest(qd: Quat): Quat {
+    infix fun nearest(qd: Quat): Quat {
         val diff = this - qd
         val sum = this + qd
         return if (diff dot diff < sum dot sum) qd else -qd
@@ -220,4 +235,35 @@ class Quat {
                     (w * s0 + q.w * s1))
         } else return this
     }
+
+    infix fun rotate(v: Vec3): Vec3 {
+        val q = this * v
+        q *= this.inverse()
+        return Vec3(q.x, q.y, q.z)
+    }
+
+    override fun equals(other: Any?) = other is Quat && x == other.x && y == other.y && z == other.z && w == other.w
+    override fun hashCode() = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()) + w.hashCode()
+}
+
+/** Game Programming Gems 2.10. make sure v0,v1 are normalized  */
+fun shortestArcQuat(v0: Vec3, v1: Vec3): Quat {
+    val c = v0 cross v1
+    val d = v0 dot v1
+
+    if (d < -1f + Float.EPSILON) {
+        val n = Vec3()
+        val unused = Vec3()
+        planeSpace1(v0, n, unused)
+        return Quat(n.x, n.y, n.z, 0f) // just pick any vector that is orthogonal to v0
+    }
+    val s = sqrt((1f + d) * 2f)
+    val rs = 1f / s
+    return Quat(c.x * rs, c.y * rs, c.z * rs, s * 0.5f)
+}
+
+fun shortestArcQuatNormalize2(v0: Vec3, v1: Vec3): Quat {
+    v0.normalize()
+    v1.normalize()
+    return shortestArcQuat(v0, v1)
 }

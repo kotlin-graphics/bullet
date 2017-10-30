@@ -168,8 +168,8 @@ class CollisionDispatcher(val collisionConfiguration: CollisionConfiguration) : 
             val colObj1 = collisionPair.proxy1!!.clientObject as CollisionObject
 
             if (dispatcher.needsCollision(colObj0, colObj1)) {
-                val obj0Wrap = CollisionObjectWrapper(null, colObj0.collisionShape, colObj0, colObj0.worldTransform, -1, -1)
-                val obj1Wrap = CollisionObjectWrapper(null, colObj1.collisionShape, colObj1, colObj1.worldTransform, -1, -1)
+                val obj0Wrap = CollisionObjectWrapper(null, colObj0.collisionShape, colObj0, colObj0.getWorldTransform(), -1, -1)
+                val obj1Wrap = CollisionObjectWrapper(null, colObj1.collisionShape, colObj1, colObj1.getWorldTransform(), -1, -1)
 
                 //dispatcher will keep algorithms persistent in the collision pair
                 if (collisionPair.algorithm == null)

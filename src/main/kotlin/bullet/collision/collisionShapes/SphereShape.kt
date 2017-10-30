@@ -35,7 +35,9 @@ class SphereShape(radius: Float) : ConvexInternalShape() {
     }
 
 
-    override fun calculateLocalInertia(mass: Float, inertia: Vec3) = inertia.put(0.4f * mass * margin * margin)
+    override fun calculateLocalInertia(mass: Float, inertia: Vec3) {
+        inertia.put(0.4f * mass * margin * margin)
+    }
 
     /** broken due to scaling   */
     override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) {

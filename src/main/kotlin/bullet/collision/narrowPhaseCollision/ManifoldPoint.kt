@@ -32,6 +32,10 @@ enum class ContactPointFlags { LATERAL_FRICTION_INITIALIZED, HAS_CONTACT_CFM, HA
     val i = 1 shl ordinal
 }
 
+infix fun Int.or(b: ContactPointFlags) = or(b.i)
+infix fun Int.has(b: ContactPointFlags) = (this and b.i) != 0
+infix fun Int.hasnt(b: ContactPointFlags) = (this and b.i) == 0
+
 /** ManifoldContactPoint collects and maintains persistent contactpoints.
  *  used to improve stability and performance of rigidbody dynamics response.   */
 class ManifoldPoint {
@@ -65,12 +69,12 @@ class ManifoldPoint {
 
     var appliedImpulseLateral1 = 0f
     var appliedImpulseLateral2 = 0f
-    private var contactMotion1 = 0f
-    private var contactMotion2 = 0f
+    var contactMotion1 = 0f
+    var contactMotion2 = 0f
 
     private var union0 = 0f
 
-    private var contactCFM
+    var contactCFM
         get() = union0
         set(value) {
             union0 = value
@@ -82,7 +86,7 @@ class ManifoldPoint {
         }
 
     private var union1 = 0f
-    private var contactERP
+    var contactERP
         get() = union1
         set(value) {
             union1 = value
@@ -93,7 +97,7 @@ class ManifoldPoint {
             union1 = value
         }
 
-    private var frictionCFM = 0f
+    var frictionCFM = 0f
     /** lifetime of the contactpoint in frames  */
     var lifeTime = 0f
 

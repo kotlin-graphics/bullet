@@ -27,11 +27,12 @@ open class Vec3 {
     infix fun put(floats: FloatArray) = put(floats[0], floats[1], floats[2])
 
     fun put(x: Number, y: Number, z: Number) = put(x.f, y.f, z.f)
-    fun put(x: Float, y: Float, z: Float) {
+    fun put(x: Float, y: Float, z: Float): Vec3 {
         this.x = x
         this.y = y
         this.z = z
         w = 0f
+        return this
     }
 
     infix fun put(v: Vec3) {
@@ -67,6 +68,12 @@ open class Vec3 {
     operator fun minus(f: Float) = Vec3(x - f, y - f, z - f)
     operator fun times(v: Vec3) = Vec3(x * v.x, y * v.y, z * v.z)
     operator fun times(f: Float) = Vec3(x * f, y * f, z * f)
+    operator fun times(q: Quat) = Quat(
+            +x * q.w + y * q.z - z * q.y,
+            +y * q.w + z * q.x - x * q.z,
+            +z * q.w + x * q.y - y * q.x,
+            -x * q.x - y * q.y - z * q.z)
+
     operator fun div(v: Vec3) = Vec3(x / v.x, y / v.y, z / v.z)
     operator fun div(v: Float) = Vec3(x / v, y / v, z / v)
 
