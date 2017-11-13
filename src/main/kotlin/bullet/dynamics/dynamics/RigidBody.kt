@@ -517,7 +517,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
 
         val idl = localInertia
         val omega1 = _angularVelocity
-        val q = getWorldTransform().rotation
+        val q = getWorldTransform().getRotation()
 
         // Convert to body coordinates
         val omegab = q.inverse() rotate omega1

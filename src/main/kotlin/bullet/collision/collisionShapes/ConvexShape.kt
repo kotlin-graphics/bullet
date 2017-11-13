@@ -5,13 +5,15 @@ import bullet.collision.broadphaseCollision.BroadphaseNativeTypes.*
 import bullet.linearMath.*
 import kotlin.math.sqrt
 
+val MAX_PREFERRED_PENETRATION_DIRECTIONS = 10
+
 abstract class ConvexShape : CollisionShape() {
 
     abstract fun localGetSupportingVertex(vec: Vec3): Vec3
 
     open fun localGetSupportingVertexWithoutMargin(vec: Vec3) = Vec3()
 
-    open fun localGetSupportVertexWithoutMarginNonVirtual(localDir: Vec3): Vec3 = when (shapeType) {
+    open infix fun localGetSupportVertexWithoutMarginNonVirtual(localDir: Vec3): Vec3 = when (shapeType) {
         SPHERE_SHAPE_PROXYTYPE -> Vec3()
         BOX_SHAPE_PROXYTYPE -> {
             val convexShape = this as BoxShape
@@ -234,7 +236,7 @@ abstract class ConvexShape : CollisionShape() {
 
     override var localScaling = Vec3()
 
-    open fun getNumPreferredPenetrationDirections() = 0
+    open val numPreferredPenetrationDirections get() = 0
 
     open fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) {}
 

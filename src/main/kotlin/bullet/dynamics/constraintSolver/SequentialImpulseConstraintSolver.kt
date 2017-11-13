@@ -40,7 +40,7 @@ typealias SingleConstraintRowSolver = (SolverBody, SolverBody, SolverConstraint)
 var numSplitImpulseRecoveries = 0
 
 /** The SequentialImpulseConstraintSolver is a fast SIMD implementation of the Projected Gauss Seidel (iterative LCP) method.   */
-abstract class SequentialImpulseConstraintSolver : ConstraintSolver {
+class SequentialImpulseConstraintSolver : ConstraintSolver() {
 
     val tmpSolverBodyPool = ArrayList<SolverBody>()
     val tmpSolverContactConstraintPool = ArrayList<SolverConstraint>()
@@ -76,6 +76,10 @@ abstract class SequentialImpulseConstraintSolver : ConstraintSolver {
     }
 
     var leastSquaresResidual = 0f
+
+    init {
+        setupSolverFunctions(false)
+    }
 
     fun setupFrictionConstraint(solverConstraint: SolverConstraint, normalAxis: Vec3, solverBodyIdA: Int, solverBodyIdB: Int,
                                 cp: ManifoldPoint, relPos1: Vec3, relPos2: Vec3,

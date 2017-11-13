@@ -18,6 +18,7 @@ package bullet
 import bullet.collision.broadphaseCollision.DbvtBroadphase
 import bullet.collision.collisionDispatch.CollisionDispatcher
 import bullet.collision.collisionDispatch.DefaultCollisionConfiguration
+import bullet.dynamics.constraintSolver.SequentialImpulseConstraintSolver
 import io.kotlintest.specs.StringSpec
 
 /** This is a Hello World program for running a basic Bullet physics simulation */
@@ -35,5 +36,7 @@ class HelloWorld : StringSpec() {
     val overlappingPairCache = DbvtBroadphase()
 
     // The default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-//    SequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
+    val solver = SequentialImpulseConstraintSolver()
+
+    val dynamicsWorld = DiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
 }

@@ -15,7 +15,8 @@ abstract class CollisionShape {
     /** getAabb returns the axis aligned bounding box in the coordinate frame of the given transform trans. */
     abstract fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3)
 
-    open fun getBoundingSphere(center: Vec3, radius: FloatArray) {
+    /** JVM specific, radius in returns */
+    open fun getBoundingSphere(center: Vec3): Float {
         val tr = Transform()
         tr.setIdentity()
         val aabbMin = Vec3()
@@ -23,23 +24,22 @@ abstract class CollisionShape {
 
         getAabb(tr, aabbMin, aabbMax)
 
-        radius[0] = (aabbMax - aabbMin).length() * 0.5f
+        val radius = (aabbMax - aabbMin).length() * 0.5f
         center put ((aabbMin + aabbMax) * 0.5f)
+        return radius
     }
 
     /** getAngularMotionDisc returns the maximum radius needed for Conservative Advancement to handle time-of-impact
      *  with rotations. */
-    open fun getAngularMotionDisc(): Float {
-        ///@todo cache this value, to improve performance
-        val center = Vec3()
-        val disc = FloatArray(1)
-        getBoundingSphere(center, disc)
-        disc[0] += center.length()
-        return disc[0]
-    }
+    val angularMotionDisc
+        get(): Float {
+            ///@todo cache this value, to improve performance
+            val center = Vec3()
+            val disc = getBoundingSphere(center)
+            return disc + center.length()
+        }
 
-    open fun getContactBreakingThreshold(defaultContactThresholdFactor: Float) =
-            getAngularMotionDisc() * defaultContactThresholdFactor
+    open fun getContactBreakingThreshold(defaultContactThresholdFactor: Float) = angularMotionDisc * defaultContactThresholdFactor
 
     /** calculateTemporalAabb calculates the enclosing aabb for the moving object over interval [0..timeStep)
      *  result is conservative  */
@@ -72,7 +72,7 @@ abstract class CollisionShape {
             temporalAabbMinz += linMotion.z
 
         //add conservative angular motion
-        val angularMotion = angvel.length() * getAngularMotionDisc() * timeStep
+        val angularMotion = angvel.length() * angularMotionDisc * timeStep
         val angularMotion3d = Vec3(angularMotion)
         temporalAabbMin.put(temporalAabbMinx, temporalAabbMiny, temporalAabbMinz)
         temporalAabbMax.put(temporalAabbMaxx, temporalAabbMaxy, temporalAabbMaxz)
@@ -83,7 +83,7 @@ abstract class CollisionShape {
 
     val isPolyhedral get() = BroadphaseProxy.isPolyhedral(shapeType.i) // TODO check if leave enum or int
     val isConvex2d get() = BroadphaseProxy.isConvex2d(shapeType.i)
-    val sConvex get() = BroadphaseProxy.isConvex(shapeType.i)
+    val isConvex get() = BroadphaseProxy.isConvex(shapeType.i)
     val isNonMoving get() = BroadphaseProxy.isNonMoving(shapeType.i)
     val isConcave get() = BroadphaseProxy.isConcave(shapeType.i)
     val isCompound get() = BroadphaseProxy.isCompound(shapeType.i)

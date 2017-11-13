@@ -46,13 +46,13 @@ object TransformUtil {
         else    // sync(angle) = sin(c * angle) / t
             angVel * (sin(0.5f * angle * timeStep) / angle)
         val dorn = Quat(axis.x, axis.y, axis.z, cos(angle * timeStep * 0.5f))
-        val orn0 = curTrans.rotation
+        val orn0 = curTrans.getRotation()
 
         val predictedOrn = dorn * orn0
         predictedOrn.safeNormalize()
 
         if (predictedOrn.length2() > Float.EPSILON)
-            predictedTransform.rotation put predictedOrn
+            predictedTransform setRotation predictedOrn
         else
             predictedTransform.basis put curTrans.basis
     }
@@ -131,8 +131,8 @@ class ConvexSeparatingDistanceUtil(boundingRadiusA: Float, boundingRadiusB: Floa
     fun updateSeparatingDistance(transA: Transform, transB: Transform) {
         val toPosA = transA.origin
         val toPosB = transB.origin
-        val toOrnA = transA.rotation
-        val toOrnB = transB.rotation
+        val toOrnA = transA.getRotation()
+        val toOrnB = transB.getRotation()
 
         if (separatingDistance > 0f) {
 
@@ -165,8 +165,8 @@ class ConvexSeparatingDistanceUtil(boundingRadiusA: Float, boundingRadiusB: Floa
 
             val toPosA = transA.origin
             val toPosB = transB.origin
-            val toOrnA = transA.rotation
-            val toOrnB = transB.rotation
+            val toOrnA = transA.getRotation()
+            val toOrnB = transB.getRotation()
             posA put toPosA
             posB put toPosB
             ornA put toOrnA

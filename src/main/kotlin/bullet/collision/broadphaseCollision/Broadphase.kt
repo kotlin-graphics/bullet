@@ -22,7 +22,7 @@ interface BroadphaseAabbCallback {
 }
 
 
-class BroadphaseRayCallback : BroadphaseAabbCallback {
+open class BroadphaseRayCallback : BroadphaseAabbCallback {
     /** added some cached data to accelerate ray-AABB tests */
     val rayDirectionInverse = Vec3()
     val signs = IntArray(3)

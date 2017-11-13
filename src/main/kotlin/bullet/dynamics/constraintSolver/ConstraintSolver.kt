@@ -25,20 +25,20 @@ enum class ConstraintSolverType { SEQUENTIAL_IMPULSE_SOLVER, MLCP_SOLVER, NNCG_S
     val i = 1 shl ordinal
 }
 
-interface ConstraintSolver {
+abstract class ConstraintSolver {
 
-    fun prepareSolve(numBodies: Int, numManifolds: Int)
+    fun prepareSolve(numBodies: Int, numManifolds: Int) = Unit
 
     /** solve a group of constraints    */
     fun solveGroup(bodies: ArrayList<CollisionObject>, numBodies: Int,
                    manifold: ArrayList<PersistentManifold>, numManifolds: Int,
                    constraints: ArrayList<TypedConstraint>, numConstraints: Int,
-                   info: ContactSolverInfo, debugDrawer: DebugDraw, dispatcher: Dispatcher): Float
+                   info: ContactSolverInfo, debugDrawer: DebugDraw, dispatcher: Dispatcher) = 0f
 
-    fun allSolved(info: ContactSolverInfo, debugDrawer: DebugDraw)
+    fun allSolved(info: ContactSolverInfo, debugDrawer: DebugDraw) = Unit
 
     /** clear internal cached data and reset random seed    */
-    fun reset()
+    fun reset() = Unit
 
-    val solverType: ConstraintSolverType
+    val solverType = ConstraintSolverType.SEQUENTIAL_IMPULSE_SOLVER
 }

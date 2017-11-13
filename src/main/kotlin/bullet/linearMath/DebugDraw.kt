@@ -30,4 +30,6 @@ class DebugDraw {
         DrawFrames(1 shl 15),
         MAX_DEBUG_DRAW_MODE(DrawFrames.i + 1)
     }
+
+    fun drawSphere(c: Vec3, fl: Float, btVector3: Any) {}
 }

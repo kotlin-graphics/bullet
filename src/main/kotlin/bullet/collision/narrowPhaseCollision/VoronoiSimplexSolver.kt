@@ -509,7 +509,7 @@ class VoronoiSimplexSolver {
         return numVertices
     }
 
-    fun inSimplex(w: Vec3): Boolean {
+    infix fun inSimplex(w: Vec3): Boolean {
         var found = false
         //btScalar maxV = btScalar(0.);
 

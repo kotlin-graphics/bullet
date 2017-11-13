@@ -34,6 +34,20 @@ open class Vec3 {
         w = 0f
         return this
     }
+    fun put(floats: FloatArray, offset: Int, scaling: Vec3): Vec3 {
+        x = floats[offset] * scaling.x
+        y = floats[offset + 1] * scaling.y
+        z = floats[offset + 2] * scaling.z
+        w = 0f
+        return this
+    }
+    fun put(doubles: DoubleArray, offset: Int, scaling: Vec3): Vec3 {
+        x = doubles[offset].f * scaling.x
+        y = doubles[offset + 1].f * scaling.y
+        z = doubles[offset + 2].f * scaling.z
+        w = 0f
+        return this
+    }
 
     infix fun put(v: Vec3) {
         x = v.x
@@ -223,7 +237,7 @@ open class Vec3 {
 
     /** Set each element to the max of the current values and the values of another Vec3
      *  @param other The other Vec3 to compare with */
-    fun setMax(other: Vec3) {
+    infix fun setMax(other: Vec3) {
         x = max(x, other.x)
         y = max(y, other.y)
         z = max(z, other.z)
@@ -232,7 +246,7 @@ open class Vec3 {
 
     /** Set each element to the min of the current values and the values of another Vec3
      *  @param other The other Vec3 to compare with */
-    fun setMin(other: Vec3) {
+    infix fun setMin(other: Vec3) {
         x = min(x, other.x)
         y = min(y, other.y)
         z = min(z, other.z)

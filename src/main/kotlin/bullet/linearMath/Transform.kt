@@ -55,10 +55,10 @@ class Transform {
     operator fun invoke(x: Vec3) = x.dot3(basis[0], basis[1], basis[2]) + origin
 
     /** @return the transform of the btQuaternion */
-    operator fun times(q: Quat) = rotation * q
+    operator fun times(q: Quat) = getRotation() * q
 
     /** @return a quaternion representing the rotation */
-    val rotation get(): Quat {
+    fun getRotation(): Quat {
         val q = Quat()
         basis.getRotation(q)
         return q
@@ -83,10 +83,22 @@ class Transform {
 
     fun invXform(inVec: Vec3) = basis.transpose() * (inVec - origin)
 
+    /** Set the rotational element by Quat  */
+    infix fun setRotation(q: Quat) = basis.setRotation(q)
+
     /** Set this transformation to the identity */
     fun setIdentity() {
         basis.setIdentity()
         origin put 0f
+    }
+
+    /** Multiply this Transform by another(this = this * another)
+     *  @param t The other transform */
+    operator fun times(t: Transform): Transform {
+        val res = Transform()
+        res.origin put basis * t.origin
+        res.basis = basis * t.basis
+        return res
     }
 
     /** Return the inverse of this transform */

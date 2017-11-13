@@ -11,7 +11,7 @@ class GjkEpaPenetrationDepthSolver : ConvexPenetrationDepthSolver {
                               convexA: ConvexShape, convexB: ConvexShape,
                               transA: Transform, transB: Transform,
                               v: Vec3, pa: Vec3, pb: Vec3,
-                              debugDraw: DebugDraw): Boolean {
+                              debugDraw: DebugDraw?): Boolean {
 
 
 //	const btScalar				radialmargin(btScalar(0.));

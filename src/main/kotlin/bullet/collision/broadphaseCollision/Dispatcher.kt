@@ -46,7 +46,7 @@ enum class DispatcherQueryType { Invalid, CONTACT_POINT_ALGORITHMS, CLOSEST_POIN
 interface Dispatcher {
 
     fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold?,
-                      queryType: DispatcherQueryType): CollisionAlgorithm
+                      queryType: DispatcherQueryType): CollisionAlgorithm?
 
     fun getNewManifold(body0: CollisionObject, body1: CollisionObject): PersistentManifold
 
