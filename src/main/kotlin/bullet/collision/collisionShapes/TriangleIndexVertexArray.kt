@@ -22,12 +22,12 @@ import bullet.linearMath.Vec3
  *  Instead of the number of indices, we pass the number of triangles.  */
 class IndexedMesh {
     var numTriangles = 0
-    var indices: Any? = null
+    var indices: Any? = null // TODO not nullable?
     var triangleIndexBase = 0
     /** Size in byte of the indices for one triangle (3 * indexType.size if the indices are tightly packed)   */
     var triangleIndexStride = 0
     var numVertices = 0
-    var vertices: Any? = null
+    var vertices: Any? = null // TODO not nullable?
     var vertexBase = 0
     /** Size of a vertex, in bytes  */
     var vertexStride = 0
@@ -36,6 +36,17 @@ class IndexedMesh {
     /** The vertex type has a default type similar to Bullet's precision mode (float or double) but can be set manually
      *  if you for example run Bullet with double precision but have mesh data in single precision..    */
     var vertexType = PHY_ScalarType.FLOAT
+
+    operator fun component1() = vertices!!
+    operator fun component2() = vertexBase
+    operator fun component3() = numVertices
+    operator fun component4() = vertexType
+    operator fun component5() = vertexStride
+    operator fun component6() = indices!!
+    operator fun component7() = triangleIndexBase
+    operator fun component8() = triangleIndexStride
+    operator fun component9() = numTriangles
+    operator fun component10() = indexType
 }
 
 /** The TriangleIndexVertexArray allows to access multiple triangle meshes, by indexing into existing triangle/index arrays.
@@ -57,11 +68,13 @@ class TriangleIndexVertexArray : StridingMeshInterface() {
         indexedMeshes.last().indexType = indexType
     }
 
+    /** JVM specific, returns the mesh with filled data */
     override fun getLockedVertexIndexBase(subPart: Int): IndexedMesh {
         assert(subPart < numSubParts)
         return indexedMeshes[subPart]
     }
 
+    /** JVM specific, returns the mesh with filled data */
     override fun getLockedReadOnlyVertexIndexBase(subPart: Int) = indexedMeshes[subPart]
 
     /** unLockVertexBase finishes the access to a subpart of the triangle mesh

@@ -53,10 +53,17 @@ val Float.Companion.EPSILON get() = 1.192092896e-07F
 //#define DECIMAL_DIG      DBL_DECIMAL_DIG
 
 val Boolean.i get() = if (this) 1 else 0
+val Byte.i get() = toInt()
 val Int.f get() = toFloat()
 val Int.L get() = toLong()
 val Int.bool get() = this != 0
+val Int.s get() = toShort()
+val Short.i get() = toInt()
 val Number.f get() = toFloat()
+val Long.i get() = toInt()
+val Float.s get() = toShort()
+val Float.i get() = toInt()
+val Char.i get() = toInt()
 
 infix fun Int.has(b: Int) = (this and b) != 0
 infix fun Int.hasnt(b: Int) = (this and b) == 0
@@ -80,3 +87,7 @@ fun <T> ArrayList<T>.swap(index0: Int, index1: Int) {
     set(index0, get(index1))
     set(index1, t)
 }
+
+
+val DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION = false
+val COMPARE_BTRAY_AABB2 = false

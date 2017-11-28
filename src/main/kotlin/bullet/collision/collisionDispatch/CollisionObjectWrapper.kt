@@ -10,12 +10,12 @@ class CollisionObjectWrapper {
 
 //    open infix fun put(collisionObjectWrapper: CollisionObjectWrapper) = CollisionObjectWrapper(null) TODO
 
-    var parent: CollisionObjectWrapper? =null
-    var shape:CollisionShape?=null
-    var collisionObject:CollisionObject?=null
+    var parent: CollisionObjectWrapper? = null
+    var shape: CollisionShape? = null
+    var collisionObject: CollisionObject? = null
     var worldTransform = Transform()
     var partId = 0
-    var index =0
+    var index = 0
 
     // TODO check constructors
     constructor(parent: CollisionObjectWrapper?, shape: CollisionShape?, collisionObject: CollisionObject, worldTransform: Transform,
@@ -27,4 +27,6 @@ class CollisionObjectWrapper {
         this.partId = partId
         this.index = index
     }
+
+    val collisionShape get() = shape!!
 }

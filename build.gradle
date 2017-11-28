@@ -11,6 +11,7 @@ buildscript {
         jcenter()   // shadow
         mavenCentral()
         maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+        maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
         maven {
             url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2'
         }
@@ -29,6 +30,7 @@ dependencies {
 repositories {
     mavenCentral()
     maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+    maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
     maven { url "https://jitpack.io" }
     maven {
         url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2'

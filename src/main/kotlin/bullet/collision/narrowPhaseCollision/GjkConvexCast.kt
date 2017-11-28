@@ -56,7 +56,7 @@ class GjkConvexCast(val convexA: ConvexShape, val convexB: ConvexShape, val simp
         val pointCollector = PointCollector()
 
         val gjk = GjkPairDetector(convexA, convexB, simplexSolver, null)//m_penetrationDepthSolver);
-        val input = DiscreteCollisionDetector.ClosestPointInput()
+        val input = DiscreteCollisionDetectorInterface.ClosestPointInput()
 
         //we don't use margins during CCD
         //	gjk.setIgnoreMargin(true);

@@ -15,6 +15,15 @@ subject to the following restrictions:
 
 package bullet.collision.collisionShapes
 
+import bullet.EPSILON
+import bullet.collision.broadphaseCollision.BroadphaseNativeTypes
+import bullet.collision.broadphaseCollision.NodeOverlapCallback
+import bullet.i
+import bullet.linearMath.Vec3
+
+val DISABLE_BVH = false // TODO move to assimp
+val DEBUG_TRIANGLE_MESH = false
+
 /** The BvhTriangleMeshShape is a static-triangle mesh shape, it can only be used for fixed/non-moving objects.
  *  If you required moving concave triangle meshes, it is recommended to perform convex decomposition using HACD,
  *  see Bullet/Demos/ConvexDecompositionDemo.
@@ -27,118 +36,181 @@ package bullet.collision.collisionShapes
  *  Instead of building the bounding volume hierarchy acceleration structure, it is also possible to serialize (save)
  *  and deserialize (load) the structure from disk.
  *  See Demos\ConcaveDemo\ConcavePhysicsDemo.cpp for an example.    */
-class BvhTriangleMeshShape : TriangleMeshShape{
+class BvhTriangleMeshShape
+/** swap first two arguments in order to have an unique common private constructor */
+private constructor(val useQuantizedAabbCompression: Boolean, meshInterface: StridingMeshInterface, buildBvh: Boolean = true)
+    : TriangleMeshShape(meshInterface) {
 
-    btOptimizedBvh*	m_bvh;
-    btTriangleInfoMap*	m_triangleInfoMap;
+    var bvh: OptimizedBvh? = null
+    var triangleInfoMap: TriangleInfoMap? = null
+    var ownsBvh = false
 
-    bool m_useQuantizedAabbCompression;
-    bool m_ownsBvh;
-    #ifdef __clang__
-        bool m_pad[11] __attribute__((unused));////need padding due to alignment
-    #else
-    bool m_pad[11];////need padding due to alignment
-    #endif
-
-    public:
-
-    BT_DECLARE_ALIGNED_ALLOCATOR();
-
-
-    btBvhTriangleMeshShape(btStridingMeshInterface* meshInterface, bool useQuantizedAabbCompression, bool buildBvh = true);
-
-    ///optionally pass in a larger bvh aabb, used for quantization. This allows for deformations within this aabb
-    btBvhTriangleMeshShape(btStridingMeshInterface* meshInterface, bool useQuantizedAabbCompression,const btVector3& bvhAabbMin,const btVector3& bvhAabbMax, bool buildBvh = true);
-
-    virtual ~btBvhTriangleMeshShape();
-
-    bool getOwnsBvh () const
-            {
-                return m_ownsBvh;
-            }
-
-
-
-    void performRaycast (btTriangleCallback* callback, const btVector3& raySource, const btVector3& rayTarget);
-    void performConvexcast (btTriangleCallback* callback, const btVector3& boxSource, const btVector3& boxTarget, const btVector3& boxMin, const btVector3& boxMax);
-
-    virtual void	processAllTriangles(btTriangleCallback* callback,const btVector3& aabbMin,const btVector3& aabbMax) const;
-
-    void	refitTree(const btVector3& aabbMin,const btVector3& aabbMax);
-
-    ///for a fast incremental refit of parts of the tree. Note: the entire AABB of the tree will become more conservative, it never shrinks
-    void	partialRefitTree(const btVector3& aabbMin,const btVector3& aabbMax);
-
-    //debugging
-    virtual const char*	getName()const {return "BVHTRIANGLEMESH";}
-
-
-    virtual void	setLocalScaling(const btVector3& scaling);
-
-    btOptimizedBvh*	getOptimizedBvh()
-    {
-        return m_bvh;
+    init {
+        shapeType = BroadphaseNativeTypes.TRIANGLE_MESH_SHAPE_PROXYTYPE
     }
 
-    void	setOptimizedBvh(btOptimizedBvh* bvh, const btVector3& localScaling=btVector3(1,1,1));
-
-    void    buildOptimizedBvh();
-
-    bool	usesQuantizedAabbCompression() const
-            {
-                return	m_useQuantizedAabbCompression;
-            }
-
-    void	setTriangleInfoMap(btTriangleInfoMap* triangleInfoMap)
-    {
-        m_triangleInfoMap = triangleInfoMap;
+    constructor(meshInterface: StridingMeshInterface, useQuantizedAabbCompression: Boolean, buildBvh: Boolean = true) :
+            this(useQuantizedAabbCompression, meshInterface, buildBvh) {
+        if (!DISABLE_BVH && buildBvh) buildOptimizedBvh()
     }
 
-    const btTriangleInfoMap*	getTriangleInfoMap() const
-            {
-                return m_triangleInfoMap;
-            }
-
-    btTriangleInfoMap*	getTriangleInfoMap()
-    {
-        return m_triangleInfoMap;
+    /** optionally pass in a larger bvh aabb, used for quantization. This allows for deformations within this aabb */
+    constructor(meshInterface: StridingMeshInterface, useQuantizedAabbCompression: Boolean, bvhAabbMin: Vec3, bvhAabbMax: Vec3,
+                buildBvh: Boolean = true) : this(useQuantizedAabbCompression, meshInterface, buildBvh) {
+        if (!DISABLE_BVH && buildBvh) {
+            bvh = OptimizedBvh().apply { build(meshInterface, useQuantizedAabbCompression, bvhAabbMin, bvhAabbMax) }
+            ownsBvh = true
+        }
     }
 
-    virtual	int	calculateSerializeBufferSize() const;
+    fun performRaycast(callback: TriangleCallback, raySource: Vec3, rayTarget: Vec3) {
+        class MyNodeOverlapCallback(val callback: TriangleCallback, val meshInterface: StridingMeshInterface) : NodeOverlapCallback {
 
-    ///fills the dataBuffer and returns the struct name (and 0 on failure)
-    virtual	const char*	serialize(void* dataBuffer, btSerializer* serializer) const;
+            override fun processNode(subPart: Int, triangleIndex: Int) {
 
-    virtual void	serializeSingleBvh(btSerializer* serializer) const;
+                val triangle = Array(3, { Vec3() })
+                val (vertices, vertexBase, _, type, stride, indices, indexBase, indexStride, _, indicesType) = meshInterface.getLockedReadOnlyVertexIndexBase(subPart)
 
-    virtual void	serializeSingleTriangleInfoMap(btSerializer* serializer) const;
+                val gfxBase = indexBase + triangleIndex * indexStride
+                assert(indicesType == PHY_ScalarType.INTEGER || indicesType == PHY_ScalarType.SHORT)
+                val meshScaling = meshInterface.scaling
+                for (j in 2 downTo 0) {
+                    val graphicsIndex = when (indicesType) {
+                        PHY_ScalarType.SHORT -> (indices as ShortArray)[gfxBase + j].i
+                        else -> (indices as IntArray)[gfxBase + j]
+                    }
+                    when (type) {
+                        PHY_ScalarType.FLOAT -> triangle[j].put(vertices as FloatArray, vertexBase + graphicsIndex * stride, meshScaling)
+                        else -> triangle[j].put(vertices as DoubleArray, vertexBase + graphicsIndex * stride, meshScaling)
+                    }
+                }
+                /* Perform ray vs. triangle collision here */
+                callback.processTriangle(triangle, subPart, triangleIndex)
+                meshInterface.unLockReadOnlyVertexBase(subPart)
+            }
+        }
 
-};
+        val myNodeCallback = MyNodeOverlapCallback(callback, meshInterface)
+        bvh!!.reportRayOverlappingNodex(myNodeCallback, raySource, rayTarget)
+    }
 
-///do not change those serialization structures, it requires an updated sBulletDNAstr/sBulletDNAstr64
-struct	btTriangleMeshShapeData
-{
-    btCollisionShapeData	m_collisionShapeData;
+    fun performConvexcast(callback: TriangleCallback, raySource: Vec3, rayTarget: Vec3, aabbMin: Vec3, aabbMax: Vec3) {
 
-    btStridingMeshInterfaceData m_meshInterface;
+        class MyNodeOverlapCallback(val callback: TriangleCallback, val meshInterface: StridingMeshInterface) : NodeOverlapCallback {
 
-    btQuantizedBvhFloatData		*m_quantizedFloatBvh;
-    btQuantizedBvhDoubleData	*m_quantizedDoubleBvh;
+            override fun processNode(subPart: Int, triangleIndex: Int) {
 
-    btTriangleInfoMapData	*m_triangleInfoMap;
+                val triangle = Array(3, { Vec3() })
+                val (vertices, vertexBase, _, type, stride, indices, indexBase, indexStride, _, indicesType) = meshInterface.getLockedReadOnlyVertexIndexBase(subPart)
 
-    float	m_collisionMargin;
+                val gfxBase = indexBase + triangleIndex * indexStride
+                assert(indicesType == PHY_ScalarType.INTEGER || indicesType == PHY_ScalarType.SHORT)
 
-    char m_pad3[4];
+                val meshScaling = meshInterface.scaling
+                for (j in 2 downTo 0) {
+                    val graphicsIndex = when (indicesType) {
+                        PHY_ScalarType.SHORT -> (indices as ShortArray)[gfxBase + j].i
+                        else -> (indices as IntArray)[gfxBase + j]
+                    }
+                    when (type) {
+                        PHY_ScalarType.FLOAT -> triangle[j].put(vertices as FloatArray, vertexBase + graphicsIndex * stride, meshScaling)
+                        else -> triangle[j].put(vertices as DoubleArray, vertexBase + graphicsIndex * stride, meshScaling)
+                    }
+                }
+                /* Perform ray vs. triangle collision here */
+                callback.processTriangle(triangle, subPart, triangleIndex)
+                meshInterface.unLockReadOnlyVertexBase(subPart)
+            }
+        }
 
-};
+        val myNodeCallback = MyNodeOverlapCallback(callback, meshInterface)
+        bvh!!.reportBoxCastOverlappingNodex(myNodeCallback, raySource, rayTarget, aabbMin, aabbMax)
+    }
 
+    /** perform bvh tree traversal and report overlapping triangles to 'callback'   */
+    override fun processAllTriangles(callback: TriangleCallback, aabbMin: Vec3, aabbMax: Vec3) {
 
-SIMD_FORCE_INLINE	int	btBvhTriangleMeshShape::calculateSerializeBufferSize() const
-{
-    return sizeof(btTriangleMeshShapeData);
+        if (DISABLE_BVH)
+        //brute force traverse all triangles
+            super.processAllTriangles(callback, aabbMin, aabbMax)
+        else {
+            //first get all the nodes
+            class MyNodeOverlapCallback(val callback: TriangleCallback, val meshInterface: StridingMeshInterface) : NodeOverlapCallback {
+                val triangle = Array(3, { Vec3() })
+                var numOverlap = 0
+
+                override fun processNode(subPart: Int, triangleIndex: Int) {
+                    numOverlap++
+
+                    val (vertices, vertexBase, numVerts, type, stride, indices, indexBase, indexStride, numFaces, indicesType) =
+                            meshInterface.getLockedReadOnlyVertexIndexBase(subPart)
+
+                    val gfxBase = indexBase + triangleIndex * indexStride
+                    assert(indicesType == PHY_ScalarType.INTEGER || indicesType == PHY_ScalarType.SHORT || indicesType == PHY_ScalarType.UCHAR)
+
+                    val meshScaling = meshInterface.scaling
+                    for (j in 2 downTo 0) {
+                        val graphicsIndex = when (indicesType) {
+                            PHY_ScalarType.SHORT -> (indices as ShortArray)[gfxBase + j].i
+                            PHY_ScalarType.INTEGER -> (indices as IntArray)[gfxBase + j]
+                            else -> (indices as ByteArray)[gfxBase + j].i
+                        }
+                        if (DEBUG_TRIANGLE_MESH) print("$graphicsIndex ,")
+                        val graphicsBase = vertexBase + graphicsIndex * stride
+                        when (type) {
+                            PHY_ScalarType.FLOAT -> triangle[j].put(vertices as FloatArray, graphicsBase, meshScaling)
+                            else -> triangle[j].put(vertices as DoubleArray, graphicsBase, meshScaling)
+                        }
+                        if (DEBUG_TRIANGLE_MESH) println("triangle vertices:${triangle[j].x},${triangle[j].y},${triangle[j].z}")
+                    }
+                    callback.processTriangle(triangle, subPart, triangleIndex)
+                    meshInterface.unLockReadOnlyVertexBase(subPart)
+                }
+            }
+
+            val myNodeCallback = MyNodeOverlapCallback(callback, meshInterface)
+            bvh!!.reportAabbOverlappingNodex(myNodeCallback, aabbMin, aabbMax)
+        }
+    }
+
+    fun refitTree(aabbMin: Vec3, aabbMax: Vec3) = bvh!!.refit(meshInterface, aabbMin, aabbMax).also { recalcLocalAabb() }
+
+    /** for a fast incremental refit of parts of the tree. Note: the entire AABB of the tree will become more
+     *  conservative, it never shrinks */
+    fun partialRefitTree(aabbMin: Vec3, aabbMax: Vec3) {
+        bvh!!.refitPartial(meshInterface, aabbMin, aabbMax)
+        localAabbMin setMin aabbMin
+        localAabbMax setMax aabbMax
+    }
+
+    /** debugging */
+    override val name get() = "BVHTRIANGLEMESH"
+
+    override var localScaling: Vec3 // TODO search for potential bug
+        get() = super.localScaling
+        set(value) {
+            if ((localScaling - value).length2() > Float.EPSILON) {
+                super.localScaling = value
+                buildOptimizedBvh()
+            }
+        }
+
+    val optimizedBvh get() = bvh
+
+    fun setOptimizedBvh(bvh: OptimizedBvh, scaling: Vec3 = Vec3(1f)) {
+        assert(this.bvh == null && !ownsBvh)
+        this.bvh = bvh
+        ownsBvh = false
+        // update the scaling without rebuilding the bvh
+        if ((localScaling - scaling).length2() > Float.EPSILON) super.localScaling = scaling
+    }
+
+    fun buildOptimizedBvh() {
+        /*  localAabbMin/localAabbMax is already re-calculated in TriangleMeshShape. We could just scale aabb, but this
+            needs some more work         */
+        bvh = OptimizedBvh().apply {
+            build(meshInterface, useQuantizedAabbCompression, localAabbMin, localAabbMax) //rebuild the bvh...
+        }
+        ownsBvh = true
+    }
 }
-
-
-
-#endif //BT_BVH_TRIANGLE_MESH_SHAPE_H

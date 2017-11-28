@@ -18,6 +18,7 @@ import bullet.has
 import bullet.hasnt
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.reflect.KMutableProperty0
 
 fun aabbExpand(aabbMin: Vec3, aabbMax: Vec3, expansionMin: Vec3, expansionMax: Vec3) {
     aabbMin put aabbMin + expansionMin
@@ -58,30 +59,30 @@ fun outcode(p: Vec3, halfExtent: Vec3) = (if (p.x < -halfExtent.x) 0x01 else 0x0
         (if (p.y < -halfExtent.y) 0x02 else 0x0) or (if (p.y > halfExtent.y) 0x10 else 0x0) or
         (if (p.z < -halfExtent.z) 0x4 else 0x0) or (if (p.z > halfExtent.z) 0x20 else 0x0)
 
-fun rayAabb2(rayFrom: Vec3, rayInvDirection: Vec3, raySign: IntArray, bounds: Array<Vec3>, tMin: FloatArray, lambdaMin: Float,
-             lambdaMax: Float): Boolean {
+fun rayAabb2(rayFrom: Vec3, rayInvDirection: Vec3, raySign: IntArray, bounds: Array<Vec3>, tMin: KMutableProperty0<Float>,
+             lambdaMin: Float, lambdaMax: Float): Boolean {
 
-    tMin[0] = (bounds[raySign[0]].x - rayFrom.x) * rayInvDirection.x
+    tMin.set((bounds[raySign[0]].x - rayFrom.x) * rayInvDirection.x)
     var tMax = (bounds[1 - raySign[0]].x - rayFrom.x) * rayInvDirection.x
     val tYmin = (bounds[raySign[1]].y - rayFrom.y) * rayInvDirection.y
     val tYmax = (bounds[1 - raySign[1]].y - rayFrom.y) * rayInvDirection.y
 
-    if (tMin[0] > tYmax || tYmin > tMax) return false
+    if (tMin() > tYmax || tYmin > tMax) return false
 
-    if (tYmin > tMin[0]) tMin[0] = tYmin
+    if (tYmin > tMin()) tMin.set(tYmin)
 
     if (tYmax < tMax) tMax = tYmax
 
     val tZmin = (bounds[raySign[2]].z - rayFrom.z) * rayInvDirection.z
     val tZmax = (bounds[1 - raySign[2]].z - rayFrom.z) * rayInvDirection.z
 
-    if (tMin[0] > tZmax || tZmin > tMax) return false
-    if (tZmin > tMin[0]) tMin[0] = tZmin
+    if (tMin() > tZmax || tZmin > tMax) return false
+    if (tZmin > tMin()) tMin.set(tZmin)
     if (tZmax < tMax) tMax = tZmax
-    return (tMin[0] < lambdaMax && tMax > lambdaMin)
+    return (tMin() < lambdaMax && tMax > lambdaMin)
 }
 
-fun rayAabb(rayFrom: Vec3, rayTo: Vec3, aabbMin: Vec3, aabbMax: Vec3, param: FloatArray, normal: Vec3): Boolean {
+fun rayAabb(rayFrom: Vec3, rayTo: Vec3, aabbMin: Vec3, aabbMax: Vec3, param: KMutableProperty0<Float>, normal: Vec3): Boolean {
     val aabbHalfExtent = (aabbMax - aabbMin) * 0.5f
     val aabbCenter = (aabbMax + aabbMin) * 0.5f
     val source = rayFrom - aabbCenter
@@ -90,7 +91,7 @@ fun rayAabb(rayFrom: Vec3, rayTo: Vec3, aabbMin: Vec3, aabbMax: Vec3, param: Flo
     val targetOutcode = outcode(target, aabbHalfExtent)
     if (sourceOutcode hasnt targetOutcode) {
         var lambdaEnter = 0f
-        var lambdaExit = param[0]
+        var lambdaExit = param()
         val r = target - source
         var normSign = 1f
         val hitNormal = Vec3()
@@ -116,7 +117,7 @@ fun rayAabb(rayFrom: Vec3, rayTo: Vec3, aabbMin: Vec3, aabbMax: Vec3, param: Flo
             normSign = -1f
         }
         if (lambdaEnter <= lambdaExit) {
-            param[0] = lambdaEnter
+            param.set(lambdaEnter)
             normal put hitNormal
             return true
         }

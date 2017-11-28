@@ -59,7 +59,7 @@ class ContinuousConvexCollision : ConvexCast {
             simplexSolver!!.reset()
             val gjk = GjkPairDetector(convexA, convexB, convexA.shapeType.i, convexB.shapeType.i, convexA.margin,
                     convexB.margin, simplexSolver, penetrationDepthSolver)
-            val input = DiscreteCollisionDetector.ClosestPointInput()
+            val input = DiscreteCollisionDetectorInterface.ClosestPointInput()
             input.transformA put transA
             input.transformB put transB
             gjk.getClosestPoints(input, pointCollector, null)

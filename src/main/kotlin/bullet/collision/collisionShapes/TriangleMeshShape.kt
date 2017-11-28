@@ -15,71 +15,108 @@ subject to the following restrictions:
 
 package bullet.collision.collisionShapes
 
+import bullet.collision.broadphaseCollision.BroadphaseNativeTypes
+import bullet.linearMath.*
+
 /** The TriangleMeshShape is an internal concave triangle mesh interface. Don't use this class directly, use
  *  BvhTriangleMeshShape instead.   */
-abstract class TriangleMeshShape(meshInterface: StridingMeshInterface) : ConcaveShape{
-    protected:
-    btVector3	m_localAabbMin;
-    btVector3	m_localAabbMax;
-    btStridingMeshInterface* m_meshInterface;
+abstract class TriangleMeshShape
+/** TriangleMeshShape constructor has been disabled/protected, so that users will not mistakenly use this class.
+ *  Don't use TriangleMeshShape but use BvhTriangleMeshShape instead!   */
+protected constructor(val meshInterface: StridingMeshInterface) : ConcaveShape() {
 
-    ///btTriangleMeshShape constructor has been disabled/protected, so that users will not mistakenly use this class.
-    ///Don't use btTriangleMeshShape but use btBvhTriangleMeshShape instead!
-    btTriangleMeshShape();
+    val localAabbMin = Vec3()
+    val localAabbMax = Vec3()
 
-    public:
-    BT_DECLARE_ALIGNED_ALLOCATOR();
-
-    virtual ~btTriangleMeshShape();
-
-    virtual btVector3 localGetSupportingVertex(const btVector3& vec) const;
-
-    virtual btVector3	localGetSupportingVertexWithoutMargin(const btVector3& vec)const
-            {
-                btAssert(0);
-                return localGetSupportingVertex(vec);
-            }
-
-    void	recalcLocalAabb();
-
-    virtual void getAabb(const btTransform& t,btVector3& aabbMin,btVector3& aabbMax) const;
-
-    virtual void	processAllTriangles(btTriangleCallback* callback,const btVector3& aabbMin,const btVector3& aabbMax) const;
-
-    virtual void	calculateLocalInertia(btScalar mass,btVector3& inertia) const;
-
-    virtual void	setLocalScaling(const btVector3& scaling);
-    virtual const btVector3& getLocalScaling() const;
-
-    btStridingMeshInterface* getMeshInterface()
-    {
-        return m_meshInterface;
+    init {
+        shapeType = BroadphaseNativeTypes.TRIANGLE_MESH_SHAPE_PROXYTYPE
+        if (meshInterface.hasPremadeAabb()) meshInterface.getPremadeAabb(localAabbMin, localAabbMax)
+        else recalcLocalAabb()
     }
 
-    const btStridingMeshInterface* getMeshInterface() const
-            {
-                return m_meshInterface;
+    fun localGetSupportingVertex(vec: Vec3): Vec3 {
+        val ident = Transform().apply { setIdentity() }
+        val supportCallback = SupportVertexCallback(vec, ident)
+        val aabbMax = Vec3(LARGE_FLOAT)
+        processAllTriangles(supportCallback, -aabbMax, aabbMax)
+        return supportCallback.supportVertexLocal  // supportVertex, TODO check if copy needed
+    }
+
+    fun localGetSupportingVertexWithoutMargin(vec: Vec3): Vec3 {
+        assert(false)
+        return localGetSupportingVertex(vec)
+    }
+
+    fun recalcLocalAabb() {
+        for (i in 0..2) {
+            val vec = Vec3().apply { set(i, 1f) }
+            val tmp = localGetSupportingVertex(vec)
+            localAabbMax[i] = tmp[i] + collisionMargin
+            vec[i] = -1f
+            tmp put localGetSupportingVertex(vec)
+            localAabbMin[i] = tmp[i] - collisionMargin
+        }
+    }
+
+    override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) {
+        val localHalfExtents = 0.5f * (localAabbMax - localAabbMin)
+        localHalfExtents += margin
+        val localCenter = 0.5f * (localAabbMax + localAabbMin)
+
+        val absB = trans.basis.absolute()
+
+        val center = trans(localCenter)
+
+        val extent = localHalfExtents dot3 absB
+        aabbMin put center - extent // TODO order
+        aabbMax put center + extent
+    }
+
+    override fun processAllTriangles(callback: TriangleCallback, aabbMin: Vec3, aabbMax: Vec3) {
+
+        class FilteredCallback(val callback: TriangleCallback, val aabbMin: Vec3, val aabbMax: Vec3) : InternalTriangleIndexCallback {
+
+            override fun internalProcessTriangleIndex(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
+                if (testTriangleAgainstAabb2(triangle, aabbMin, aabbMax))
+                    callback.processTriangle(triangle, partId, triangleIndex) //check aabb in triangle-space, before doing this
             }
+        }
 
-    const btVector3& getLocalAabbMin() const
-            {
-                return m_localAabbMin;
+        val filterCallback = FilteredCallback(callback, aabbMin, aabbMax)
+        meshInterface.internalProcessAllTriangles(filterCallback, aabbMin, aabbMax)
+    }
+
+    override fun calculateLocalInertia(mass: Float, inertia: Vec3) {
+        assert(false, { "moving concave objects not supported" })
+        inertia put 0f
+    }
+
+    override var localScaling // TODO search for potential bug
+        get() = meshInterface.scaling
+        set(value) {
+            meshInterface.scaling put value
+            recalcLocalAabb()
+        }
+
+    /** debugging */
+    override val name get() = "TRIANGLEMESH"
+}
+
+class SupportVertexCallback(supportVecWorld: Vec3, val worldTrans: Transform) : TriangleCallback {
+
+    val supportVertexLocal = Vec3()
+    var maxDot = -LARGE_FLOAT
+    val supportVecLocal = supportVecWorld * worldTrans.basis
+
+    override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
+        for (t in triangle) {
+            val dot = supportVecLocal dot t
+            if (dot > maxDot) {
+                maxDot = dot
+                supportVertexLocal put t
             }
-    const btVector3& getLocalAabbMax() const
-            {
-                return m_localAabbMax;
-            }
+        }
+    }
 
-
-
-    //debugging
-    virtual const char*	getName()const {return "TRIANGLEMESH";}
-
-
-
-};
-
-
-
-
-#endif //BT_TRIANGLE_MESH_SHAPE_H
+    val supportVertexWorldSpace get() = worldTrans(supportVertexLocal)
+}

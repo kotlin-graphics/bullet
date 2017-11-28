@@ -37,7 +37,6 @@ abstract class StridingMeshInterface {
 
         // if the number of parts is big, the performance might drop due to the innerloop switch on indexType
         for (part in 0 until graphicsSubparts) {
-            getLockedReadOnlyVertexIndexBase(part)
             val mesh = getLockedReadOnlyVertexIndexBase(part)
             val vertexBase = mesh.vertexBase
             val numVert = mesh.numVertices
@@ -161,9 +160,9 @@ abstract class StridingMeshInterface {
      *  this subpart has a continuous array of vertices and indices
      *  in this way the mesh can be handled as chunks of memory with striding very similar to OpenGL vertexArray support
      *  make a call to lockVertexBase when the read and write access is finished    */
-    abstract fun getLockedVertexIndexBase(subPart: Int): IndexedMesh
+    abstract fun getLockedVertexIndexBase(subPart: Int = 0): IndexedMesh
 
-    abstract fun getLockedReadOnlyVertexIndexBase(subPart: Int): IndexedMesh
+    abstract fun getLockedReadOnlyVertexIndexBase(subPart: Int = 0): IndexedMesh
 
     /** unLockVertexBase finishes the access to a subpart of the triangle mesh
      *  make a call to unLockVertexBase when the read and write access (using getLockedVertexIndexBase) is finished */

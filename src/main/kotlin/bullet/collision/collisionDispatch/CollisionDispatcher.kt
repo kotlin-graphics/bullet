@@ -119,13 +119,15 @@ class CollisionDispatcher(val collisionConfiguration: CollisionConfiguration) : 
 
     override fun clearManifold(manifold: PersistentManifold) = manifold.clearManifold()
 
-    override fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold?, queryType: DQT): CollisionAlgorithm {
-
+    override fun findAlgorithm(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, sharedManifold: PersistentManifold?,
+                               queryType: DQT): CollisionAlgorithm {
+        val a = body0Wrap.collisionShape.shapeType.i
+        val b = body1Wrap.collisionShape.shapeType.i
         val ci = CollisionAlgorithmConstructionInfo(this, sharedManifold)
         return if (queryType == DQT.CONTACT_POINT_ALGORITHMS)
-            doubleDispatchContactPoints[body0Wrap.shape!!.shapeType.i][body1Wrap.shape!!.shapeType.i].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
+            doubleDispatchContactPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
         else
-            doubleDispatchClosestPoints[body0Wrap.shape!!.shapeType.i][body1Wrap.shape!!.shapeType.i].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
+            doubleDispatchClosestPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
     }
 
     override fun needsCollision(body0: CollisionObject?, body1: CollisionObject?): Boolean {

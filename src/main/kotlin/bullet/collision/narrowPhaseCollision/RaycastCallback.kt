@@ -42,7 +42,7 @@ open class TriangleRaycastCallback(val from: Vec3, val to: Vec3, flags: Int = 0)
 
     var hitFraction = 1f
 
-    override fun processTriangle(triangle: ArrayList<Vec3>, partId: Int, triangleIndex: Int) {
+    override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
 
         val (vert0, vert1, vert2) = triangle
 
@@ -93,12 +93,12 @@ open class TriangleRaycastCallback(val from: Vec3, val to: Vec3, flags: Int = 0)
     open fun reportHit(hitNormalLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int) = 0f
 }
 
-class TriangleConvexcastCallback(val convexShape: ConvexShape, val convexShapeFrom: Transform, val convexShapeTo: Transform,
+open class TriangleConvexcastCallback(val convexShape: ConvexShape, val convexShapeFrom: Transform, val convexShapeTo: Transform,
                                  val triangleToWorld: Transform, var triangleCollisionMargin: Float) : TriangleCallback {
     var hitFraction = 1f
     var allowedPenetration = 0f
 
-    override fun processTriangle(triangle: ArrayList<Vec3>, partId: Int, triangleIndex: Int) {
+    override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
 
         val triangleShape = TriangleShape(triangle[0], triangle[1], triangle[2])
         triangleShape.margin = triangleCollisionMargin
@@ -121,5 +121,5 @@ class TriangleConvexcastCallback(val convexShape: ConvexShape, val convexShapeFr
                 }
     }
 
-    fun reportHit(hitNormalLocal: Vec3, hitPointLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int) = 0f
+    open fun reportHit(hitNormalLocal: Vec3, hitPointLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int) = 0f
 }

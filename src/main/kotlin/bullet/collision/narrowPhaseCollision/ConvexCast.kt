@@ -42,5 +42,5 @@ abstract class ConvexCast {
     }
 
     /** cast a convex against another convex object */
-    abstract fun calcTimeOfImpact(fromA: Transform, toA: Transform, fromB: Transform, toB: Transform, result: CastResult):Boolean
+    abstract fun calcTimeOfImpact(fromA: Transform, toA: Transform, fromB: Transform, toB: Transform, result: CastResult): Boolean
 }

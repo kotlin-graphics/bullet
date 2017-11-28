@@ -15,10 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
-import bullet.collision.narrowPhaseCollision.DiscreteCollisionDetector
-import bullet.collision.narrowPhaseCollision.ManifoldPoint
-import bullet.collision.narrowPhaseCollision.PersistentManifold
-import bullet.collision.narrowPhaseCollision.contactStartedCallback
+import bullet.collision.narrowPhaseCollision.*
 import bullet.has
 import bullet.linearMath.Vec3
 import bullet.linearMath.planeSpace1
@@ -30,7 +27,7 @@ typealias ContactAddedCallback = (ManifoldPoint, CollisionObjectWrapper, Int, In
 var contactAddedCallback: ContactAddedCallback? = null
 
 /** ManifoldResult is a helper class to manage  contact results.    */
-open class ManifoldResult : DiscreteCollisionDetector.Result {
+open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
 
     var manifoldPtr: PersistentManifold? = null
 

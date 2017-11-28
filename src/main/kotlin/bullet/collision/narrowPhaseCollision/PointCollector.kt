@@ -18,7 +18,7 @@ package bullet.collision.narrowPhaseCollision
 import bullet.linearMath.LARGE_FLOAT
 import bullet.linearMath.Vec3
 
-class PointCollector : DiscreteCollisionDetector.Result{
+class PointCollector : DiscreteCollisionDetectorInterface.Result{
 
     val normalOnBInWorld = Vec3()
     val pointInWorld = Vec3()

@@ -49,7 +49,7 @@ class StaticPlaneShape(planeNormal: Vec3, val planeConstant: Float) : ConcaveSha
 
         val projectedCenter = center - (planeNormal.dot(center) - planeConstant) * planeNormal
 
-        val triangle = arrayListOf(
+        val triangle = arrayOf(
                 projectedCenter + tangentDir0 * radius + tangentDir1 * radius,
                 projectedCenter + tangentDir0 * radius - tangentDir1 * radius,
                 projectedCenter - tangentDir0 * radius - tangentDir1 * radius)

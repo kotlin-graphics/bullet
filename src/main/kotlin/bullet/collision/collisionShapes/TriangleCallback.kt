@@ -21,7 +21,7 @@ import bullet.linearMath.Vec3
  *  This callback is called by processAllTriangles for all btConcaveShape derived class, such as  BvhTriangleMeshShape,
  *  StaticPlaneShape and HeightfieldTerrainShape.   */
 interface TriangleCallback {
-    fun processTriangle(triangle: ArrayList<Vec3>, partId: Int, triangleIndex: Int)
+    fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int)
 }
 
 interface InternalTriangleIndexCallback {

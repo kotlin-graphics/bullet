@@ -16,14 +16,13 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
-import bullet.BYTES
+import bullet.*
 import bullet.dynamics.constraintSolver.SolverConstraint
 import bullet.dynamics.constraintSolver.TypedConstraint
-import bullet.i
+import bullet.linearMath.LARGE_FLOAT
 import bullet.linearMath.Vec3
+import bullet.linearMath.rayAabb
 import bullet.linearMath.rayAabb2
-import bullet.pop
-import bullet.push
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -190,7 +189,7 @@ class Dbvt {
 
     interface Collide {
         fun process(a: DbvtNode, b: DbvtNode) = Unit
-        infix fun process(node: DbvtNode) = Unit
+        infix fun process(node: DbvtNode) = Unit // TODO consider renaming node -> leaf
         fun process(n: DbvtNode, s: Float) = process(n)
         infix fun descent(node: DbvtNode) = true
         infix fun allLeaves(node: DbvtNode?) = true
@@ -204,27 +203,6 @@ class Dbvt {
 
     interface Clone {
         fun cloneLeaf(node: DbvtNode)
-    }
-
-    // Constants
-    companion object {
-        val SIMPLE_STACKSIZE = 64
-        val DOUBLE_STACKSIZE = SIMPLE_STACKSIZE * 2
-
-        fun maxDepth(node: DbvtNode?) = node?.let { node.getMaxDepth(1, 0) } ?: 0
-
-        fun countLeaves(node: DbvtNode): Int = when {
-            node.isInternal -> countLeaves(node.childs[0]!!) + countLeaves(node.childs[1]!!)
-            else -> 1
-        }
-
-        fun extractLeaves(node: DbvtNode, leaves: ArrayList<DbvtNode>) {
-            if (node.isInternal) {
-                extractLeaves(node.childs[0]!!, leaves)
-                extractLeaves(node.childs[1]!!, leaves)
-            } else
-                leaves.add(node)
-        }
     }
 
     // Fields
@@ -477,21 +455,8 @@ class Dbvt {
             } while (stack.isNotEmpty())
         }
     }
-//
-//    DBVT_PREFIX
-//    void        collideTVNoStackAlloc(    const btDbvtNode* root,
-//    const btDbvtVolume& volume,
-//    btNodeStack& stack,
-//    DBVT_IPOLICY) const
-//
-//
-//    ///rayTest is a re-entrant ray test, and can be called in parallel as long as the btAlignedAlloc is thread-safe (uses locking etc)
-//    ///rayTest is slower than rayTestInternal, because it builds a local stack, using memory allocations, and it recomputes signs/rayDirectionInverses each time
-//    DBVT_PREFIX
-//    static void        rayTest(    const btDbvtNode* root,
-//    const btVector3& rayFrom,
-//    const btVector3& rayTo,
-//    DBVT_IPOLICY)
+
+    var tMin = 1f
     /** rayTestInternal is faster than rayTest, because it uses a persistent stack (to reduce dynamic memory allocations
      *  to a minimum) and it uses precomputed signs/rayInverseDirections
      *  rayTestInternal is used by DbvtBroadphase to accelerate world ray casts */
@@ -507,9 +472,9 @@ class Dbvt {
                 val node = stack[--depth]
                 bounds[0] = node.volume.min - aabbMax
                 bounds[1] = node.volume.max - aabbMin
-                val tMin = floatArrayOf(1f)
+                tMin = 1f
                 val lambdaMin = 0f
-                val result1 = rayAabb2(rayFrom, rayDirectionInverse, signs, bounds, tMin, lambdaMin, lambdaMax)
+                val result1 = rayAabb2(rayFrom, rayDirectionInverse, signs, bounds, ::tMin, lambdaMin, lambdaMax)
                 if (result1) {
                     if (node.isInternal) {
                         if (depth > treshold) {
@@ -566,6 +531,87 @@ class Dbvt {
 //    private :
 //    btDbvt(const btDbvt&)
 //    {}
+
+    // Constants
+    companion object {
+        val SIMPLE_STACKSIZE = 64
+        val DOUBLE_STACKSIZE = SIMPLE_STACKSIZE * 2
+
+        fun maxDepth(node: DbvtNode?) = node?.let { node.getMaxDepth(1, 0) } ?: 0
+
+        fun countLeaves(node: DbvtNode): Int = when {
+            node.isInternal -> countLeaves(node.childs[0]!!) + countLeaves(node.childs[1]!!)
+            else -> 1
+        }
+
+        fun extractLeaves(node: DbvtNode, leaves: ArrayList<DbvtNode>) {
+            if (node.isInternal) {
+                extractLeaves(node.childs[0]!!, leaves)
+                extractLeaves(node.childs[1]!!, leaves)
+            } else
+                leaves.add(node)
+        }
+        //
+//    DBVT_PREFIX
+//    void        collideTVNoStackAlloc(    const btDbvtNode* root,
+//    const btDbvtVolume& volume,
+//    btNodeStack& stack,
+//    DBVT_IPOLICY) const
+
+        var tMin = 1f
+        var param = 1f
+
+        /** rayTest is a re-entrant ray test, and can be called in parallel as long as the AlignedAlloc is thread-safe
+         *  (uses locking etc)
+         *  rayTest is slower than rayTestInternal, because it builds a local stack, using memory allocations, and it
+         *  recomputes signs/rayDirectionInverses each time */
+        fun rayTest(root: DbvtNode?, rayFrom: Vec3, rayTo: Vec3, policy: Collide) {
+            if (root != null) {
+                val rayDir = (rayTo - rayFrom).normalize()
+                ///what about division by zero? --> just set rayDirection[i] to INF/BT_LARGE_FLOAT
+                val rayDirectionInverse = Vec3(
+                        if (rayDir[0] == 0f) LARGE_FLOAT else 1f / rayDir[0],
+                        if (rayDir[1] == 0f) LARGE_FLOAT else 1f / rayDir[1],
+                        if (rayDir[2] == 0f) LARGE_FLOAT else 1f / rayDir[2])
+                val signs = IntArray(3, { (rayDirectionInverse[it] < 0f).i })
+                val lambdaMax = rayDir dot (rayTo - rayFrom)
+                val resultNormal = Vec3()
+                val stack = ArrayList<DbvtNode>()
+                var depth = 1
+                var treshold = DOUBLE_STACKSIZE - 2
+                stack.resize(DOUBLE_STACKSIZE)
+                stack[0] = root
+                val bounds = Array(2, { Vec3() })
+                do {
+                    val node = stack[--depth]
+
+                    bounds[0] = node.volume.min
+                    bounds[1] = node.volume.max
+
+                    tMin = 1f
+                    val lambdaMin = 0f
+                    val result1 = rayAabb2(rayFrom, rayDirectionInverse, signs, bounds, ::tMin, lambdaMin, lambdaMax)
+
+                    if (COMPARE_BTRAY_AABB2) {
+                        param = 1f
+                        val result2 = rayAabb(rayFrom, rayTo, node.volume.min, node.volume.max, ::param, resultNormal)
+                        assert(result1 == result2)
+                    }
+                    if (result1) {
+                        if (node.isInternal) {
+                            if (depth > treshold) {
+                                stack.resize(stack.size * 2)
+                                treshold = stack.size - 2
+                            }
+                            stack[depth++] = node.childs[0]!!
+                            stack[depth++] = node.childs[1]!!
+                        } else
+                            policy.process(node)
+                    }
+                } while (depth != 0)
+            }
+        }
+    }
 }
 
 class DbvtNodeEnumerator : Dbvt.Collide {
@@ -828,6 +874,7 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
             is TypedConstraint.ConstraintInfo1 -> for (i in size until newSize) add(TypedConstraint.ConstraintInfo1() as T)
             is SolverConstraint -> for (i in size until newSize) add(SolverConstraint() as T)
             is Int -> for (i in size until newSize) add(0 as T)
+            is QuantizedBvhNode -> for (i in size until newSize) add(QuantizedBvhNode() as T)
         }
     }
 }

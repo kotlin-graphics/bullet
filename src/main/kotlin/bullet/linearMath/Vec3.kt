@@ -22,6 +22,12 @@ open class Vec3 {
         this.y = y
         this.z = z
     }
+    constructor(x: Float, y: Float, z: Float, w: Float) {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
 
     infix fun put(f: Float) = put(f, f, f)
     infix fun put(floats: FloatArray) = put(floats[0], floats[1], floats[2])
@@ -253,6 +259,9 @@ open class Vec3 {
         w = min(w, other.w)
     }
 
+    infix fun max(other: Vec3) = Vec3(max(x, other.x), max(y, other.y), max(z, other.z), max(w, other.w))
+    infix fun min(other: Vec3) = Vec3(min(x, other.x), min(y, other.y), min(z, other.z), min(w, other.w))
+
     fun getSkewSymmetricMatrix(v0: Vec3, v1: Vec3, v2: Vec3) {
         v0.put(0f, -z, y)
         v1.put(z, 0f, -x)
@@ -314,6 +323,7 @@ open class Vec3 {
 }
 
 operator fun Float.times(v: Vec3) = Vec3(v.x * this, v.y * this, v.z * this)
+operator fun Float.div(v: Vec3) = Vec3(this / v.x, this / v.y, this / v.z)
 
 fun planeSpace1(n: Vec3, p: Vec3, q: Vec3) {
     if (abs(n[2]) > SIMDSQRT12) {

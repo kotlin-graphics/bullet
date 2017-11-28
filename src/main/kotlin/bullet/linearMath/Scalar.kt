@@ -2,6 +2,9 @@ package bullet.linearMath
 
 import kotlin.math.sqrt
 
+/* SVN $Revision$ on $Date$ from http://bullet.googlecode.com*/
+val BULLET_VERSION = 287
+
 
 val LARGE_FLOAT = 1e18f
 
