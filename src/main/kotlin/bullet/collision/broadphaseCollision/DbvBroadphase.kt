@@ -47,7 +47,7 @@ class DbvtProxy(aabbMin: Vec3, aabbMax: Vec3, userPtr: Any?, collisionFilterGrou
  *  Objects can move from one tree to the other.
  *  This is a very fast broadphase, especially for very dynamic worlds where many objects are moving. Its insert/add
  *  and remove of objects is generally faster than the sweep and prune broadphases AxisSweep3 and _32BitAxisSweep3. */
-class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : Broadphase {
+class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterface {
 
     // Config
     companion object {
@@ -410,7 +410,7 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : Broadphase {
         }
     }
 
-    fun benchmark(broadphase: Broadphase) = Unit
+    fun benchmark(broadphase: BroadphaseInterface) = Unit
 }
 
 fun listAppend(item: DbvtProxy, list: Array<DbvtProxy?>, ptr: Int) {

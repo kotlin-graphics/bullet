@@ -1,5 +1,7 @@
 package bullet.linearMath
 
+import bullet.EPSILON
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /* SVN $Revision$ on $Date$ from http://bullet.googlecode.com*/
@@ -33,5 +35,7 @@ fun normalizeAngle(angleInRadians: Float): Float {
 
 /** rudimentary class to provide type info  */
 open class TypedObject(val objectType: Int)
+
+val Float.fuzzyZero get() = abs(this) < Float.EPSILON
 
 fun equal(a: Float, eps: Float) = a <= eps && !(a < -eps)

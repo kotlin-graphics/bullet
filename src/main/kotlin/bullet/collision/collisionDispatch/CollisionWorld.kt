@@ -15,12 +15,10 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
-import bullet.DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION
+import bullet.*
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.collisionShapes.*
 import bullet.collision.narrowPhaseCollision.*
-import bullet.has
-import bullet.i
 import bullet.linearMath.*
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as Bnt
 import bullet.collision.broadphaseCollision.DispatcherQueryType as Dqt
@@ -80,11 +78,11 @@ import bullet.collision.collisionDispatch.CollisionObject.CollisionObjectTypes a
  */
 
 /** CollisionWorld is interface and container for the collision detection   */
-class CollisionWorld
+open class CollisionWorld
 /** this constructor doesn't own the dispatcher and paircache/broadphase    */
 (
-        val dispatcher1: Dispatcher,
-        val broadphasePairCache: Broadphase,
+        var dispatcher: Dispatcher?,
+        val broadphasePairCache: BroadphaseInterface,
         collisionConfiguration: CollisionConfiguration
 ) {
 
@@ -97,6 +95,8 @@ class CollisionWorld
     /** forceUpdateAllAabbs can be set to false as an optimization to only update active object AABBs
      *  it is true by default, because it is error-prone (setting the position of static objects wouldn't update their AABB)    */
     var forceUpdateAllAabbs = true
+
+    val broadphase get() = broadphasePairCache
 
     val pairCache get() = broadphasePairCache.overlappingPairCache
 
@@ -124,11 +124,11 @@ class CollisionWorld
 
         //moving objects should be moderately sized, probably something wrong if not
         if (colObj.isStaticObject || (maxAabb - minAabb).length2() < 1e12f)
-            bp.setAabb(colObj.broadphaseHandle!!, minAabb, maxAabb, dispatcher1)
+            bp.setAabb(colObj.broadphaseHandle!!, minAabb, maxAabb, dispatcher!!)
         else {
             /*  something went wrong, investigate
                 this assert is unwanted in 3D modelers (danger of loosing work)             */
-            colObj.activationState1 = DISABLE_SIMULATION
+            colObj.activationState = DISABLE_SIMULATION
 
             debugDrawer?.let {
                 // TODO
@@ -153,9 +153,9 @@ class CollisionWorld
 
     /** The computeOverlappingPairs is usually already called by performDiscreteCollisionDetection (or stepSimulation)
      *  it can be useful to use if you perform ray tests without collision detection/simulation */
-    fun computeOverlappingPairs() = broadphasePairCache.calculateOverlappingPairs(dispatcher1)
+    fun computeOverlappingPairs() = broadphasePairCache.calculateOverlappingPairs(dispatcher!!)
 
-    fun debugDrawWorld() {
+    open fun debugDrawWorld() {
 
         debugDrawer?.let {
 
@@ -521,7 +521,7 @@ class CollisionWorld
         abstract fun addSingleResult(convexResult: LocalConvexResult, normalInWorldSpace: Boolean): Float
     }
 
-    class ClosestConvexResultCallback(
+    open class ClosestConvexResultCallback(
             /** used to calculate hitPointWorld from hitFraction    */
             val convexFromWorld: Vec3, val convexToWorld: Vec3) : ConvexResultCallback() {
 
@@ -613,13 +613,13 @@ class CollisionWorld
         val obA = CollisionObjectWrapper(null, colObjA.collisionShape, colObjA, colObjA.getWorldTransform(), -1, -1)
         val obB = CollisionObjectWrapper(null, colObjB.collisionShape, colObjB, colObjB.getWorldTransform(), -1, -1)
 
-        dispatcher1.findAlgorithm(obA, obB, null, Dqt.CLOSEST_POINT_ALGORITHMS)?.let { algorithm ->
+        dispatcher!!.findAlgorithm(obA, obB, null, Dqt.CLOSEST_POINT_ALGORITHMS)?.let { algorithm ->
             val contactPointResult = BridgedManifoldResult(obA, obB, resultCallback)
             contactPointResult.closestPointDistanceThreshold = resultCallback.closestDistanceThreshold
             // discrete collision detection query
             algorithm.processCollision(obA, obB, dispatchInfo, contactPointResult)
 
-            dispatcher1.freeCollisionAlgorithm(algorithm)
+            dispatcher!!.freeCollisionAlgorithm(algorithm)
         }
     }
 
@@ -932,7 +932,7 @@ class CollisionWorld
                                                    val colObjWorldTransform: Transform, val resultCallback: ConvexResultCallback)
                             : Dbvt.Collide {
 
-                            override fun processChild(index: Int, childTrans: Transform, childCollisionShape: CollisionShape) {
+                            fun processChild(index: Int, childTrans: Transform, childCollisionShape: CollisionShape) {
                                 val childWorldTrans = colObjWorldTransform * childTrans
 
                                 class LocalInfoAdder(val i: Int, val userCallback: ConvexResultCallback) : ConvexResultCallback() {
@@ -995,48 +995,61 @@ class CollisionWorld
         }
     }
 
-    virtual void    addCollisionObject(btCollisionObject* collisionObject, int collisionFilterGroup=btBroadphaseProxy::DefaultFilter, int collisionFilterMask=btBroadphaseProxy::AllFilter)
+    fun addCollisionObject(collisionObject: CollisionObject,
+                           collisionFilterGroup: Int = BroadphaseProxy.CollisionFilterGroups.DefaultFilter.i,
+                           collisionFilterMask: Int = BroadphaseProxy.CollisionFilterGroups.AllFilter.i) {
+        //check that the object isn't already added
+        assert(!collisionObjects.contains(collisionObject))
+        assert(collisionObject.worldArrayIndex == -1)  // do not add the same object to more than one collision world
 
-    btCollisionObjectArray& getCollisionObjectArray()
-    {
-        return m_collisionObjects
+        collisionObject.worldArrayIndex = collisionObjects.size
+        collisionObjects.add(collisionObject)
+        //calculate new AABB
+        val trans = collisionObject.getWorldTransform()
+
+        val minAabb = Vec3()
+        val maxAabb = Vec3()
+        collisionObject.collisionShape!!.getAabb(trans, minAabb, maxAabb)
+
+        val type = collisionObject.collisionShape!!.shapeType
+        collisionObject.broadphaseHandle = broadphase.createProxy(minAabb, maxAabb, type.i, collisionObject, collisionFilterGroup,
+                collisionFilterMask, dispatcher!!)
     }
 
-    const btCollisionObjectArray& getCollisionObjectArray()
-    const
-    {
-        return m_collisionObjects
+    fun removeCollisionObject(collisionObject: CollisionObject) {
+        collisionObject.broadphaseHandle?.let {
+            //
+            // only clear the cached algorithms
+            //
+            broadphase.overlappingPairCache.cleanProxyFromPairs(it, dispatcher!!)
+            broadphase.destroyProxy(it, dispatcher!!)
+            collisionObject.broadphaseHandle = null
+        }
+        val iObj = collisionObject.worldArrayIndex
+//    btAssert(iObj >= 0 && iObj < m_collisionObjects.size()); // trying to remove an object that was never added or already removed previously?
+        if (iObj in collisionObjects.indices) {
+            assert(collisionObject === collisionObjects[iObj])
+            collisionObjects.swapLastAt(iObj)
+            collisionObjects.pop()
+            if (iObj < collisionObjects.size)
+                collisionObjects[iObj].worldArrayIndex = iObj
+        } else
+        // slow linear search
+        //swapremove
+            collisionObjects.remove(collisionObject)
+
+        collisionObject.worldArrayIndex = -1
     }
 
-
-    virtual void    removeCollisionObject(btCollisionObject* collisionObject)
-
-    virtual void    performDiscreteCollisionDetection()
-
-    btDispatcherInfo& getDispatchInfo()
-    {
-        return m_dispatchInfo
+    fun performDiscreteCollisionDetection() {
+//        BT_PROFILE("performDiscreteCollisionDetection");
+        updateAabbs()
+        computeOverlappingPairs()
+//        BT_PROFILE("dispatchAllCollisionPairs")
+        dispatcher?.let {
+            it.dispatchAllCollisionPairs(broadphasePairCache.overlappingPairCache, dispatchInfo, it)
+        }
     }
-
-    const btDispatcherInfo& getDispatchInfo()
-    const
-    {
-        return m_dispatchInfo
-    }
-
-    bool    getForceUpdateAllAabbs()
-    const
-    {
-        return m_forceUpdateAllAabbs
-    }
-    void setForceUpdateAllAabbs( bool forceUpdateAllAabbs)
-    {
-        m_forceUpdateAllAabbs = forceUpdateAllAabbs
-    }
-
-///Preliminary serialization test for Bullet 2.76. Loading those files requires a separate parser (Bullet/Demos/SerializeDemo)
-    virtual    void    serialize(btSerializer* serializer)
-
 }
 
 class SingleRayCallback(val rayFromWorld: Vec3, val rayToWorld: Vec3, val world: CollisionWorld, val resultCallback: CollisionWorld.RayResultCallback)
@@ -1070,7 +1083,8 @@ class SingleRayCallback(val rayFromWorld: Vec3, val rayToWorld: Vec3, val world:
         // only perform raycast if filterMask matches
         if (resultCallback needsCollision collisionObject.broadphaseHandle!!)
         //culling already done by broadphase
-            world.rayTestSingle(rayFromTrans, rayToTrans, collisionObject, collisionObject.collisionShape, collisionObject.getWorldTransform(), resultCallback)
+            CollisionWorld.rayTestSingle(rayFromTrans, rayToTrans, collisionObject, collisionObject.collisionShape!!,
+                    collisionObject.getWorldTransform(), resultCallback)
         return true
     }
 }
@@ -1102,8 +1116,8 @@ class SingleSweepCallback(val castShape: ConvexShape, val convexFromTrans: Trans
 
         // only perform raycast if filterMask matches
         if (resultCallback needsCollision collisionObject.broadphaseHandle!!)
-            world.objectQuerySingle(castShape, convexFromTrans, convexToTrans, collisionObject,
-                    collisionObject.collisionShape, collisionObject.getWorldTransform(), resultCallback, allowedCcdPenetration)
+            CollisionWorld.objectQuerySingle(castShape, convexFromTrans, convexToTrans, collisionObject,
+                    collisionObject.collisionShape!!, collisionObject.getWorldTransform(), resultCallback, allowedCcdPenetration)
         return true
     }
 }
@@ -1121,13 +1135,13 @@ class SingleContactCallback(val collisionObject: CollisionObject, val world: Col
             val ob0 = CollisionObjectWrapper(null, collisionObject.collisionShape, collisionObject, collisionObject.getWorldTransform(), -1, -1)
             val ob1 = CollisionObjectWrapper(null, collisionObject.collisionShape, collisionObject, collisionObject.getWorldTransform(), -1, -1)
 
-            world.dispatcher1.findAlgorithm(ob0, ob1, null, Dqt.CLOSEST_POINT_ALGORITHMS)?.let { algorithm ->
+            world.dispatcher!!.findAlgorithm(ob0, ob1, null, Dqt.CLOSEST_POINT_ALGORITHMS)?.let { algorithm ->
                 val contactPointResult = BridgedManifoldResult(ob0, ob1, resultCallback)
                 //discrete collision detection query
 
                 algorithm.processCollision(ob0, ob1, world.dispatchInfo, contactPointResult)
 
-                world.dispatcher1.freeCollisionAlgorithm(algorithm)
+                world.dispatcher!!.freeCollisionAlgorithm(algorithm)
             }
         }
         return true

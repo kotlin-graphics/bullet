@@ -20,6 +20,9 @@ import bullet.collision.broadphaseCollision.Dbvt
 import bullet.collision.broadphaseCollision.DbvtNode
 import bullet.collision.broadphaseCollision.DbvtVolume
 import bullet.linearMath.*
+import bullet.pop
+import bullet.swap
+import bullet.swapLastAt
 
 class CompoundShapeChild {
     val transform = Transform()
@@ -112,11 +115,9 @@ class CompoundShape(enableDynamicAabbTree: Boolean = true, initialChildCapacity:
         updateRevision++
         assert(childShapeIndex >= 0 && childShapeIndex < children.size)
         dynamicAabbTree?.remove(children[childShapeIndex].node)
-        children.removeAt(childShapeIndex)
-        val last = children[children.lastIndex]
-        children.removeAt(children.lastIndex)
-        children.add(childShapeIndex, last)
+        children.swapLastAt(childShapeIndex)
         dynamicAabbTree?.let { children[childShapeIndex].node.dataAsInt = childShapeIndex }
+        children.pop()
     }
 
     val numChildShapes get() = children.size

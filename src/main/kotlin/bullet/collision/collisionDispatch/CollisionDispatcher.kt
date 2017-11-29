@@ -15,14 +15,11 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.*
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.collision.narrowPhaseCollision.contactBreakingThreshold
-import bullet.has
-import bullet.hasnt
-import bullet.pop
-import bullet.swap
 import kotlin.math.min
 import bullet.collision.broadphaseCollision.DispatcherQueryType as DQT
 import bullet.collision.collisionDispatch.CollisionDispatcher.DispatcherFlags as DF
@@ -112,7 +109,7 @@ class CollisionDispatcher(val collisionConfiguration: CollisionConfiguration) : 
 
         val findIndex = manifold.index1a
         assert(findIndex < manifolds.size)
-        manifolds.swap(findIndex, manifolds.lastIndex)
+        manifolds.swapLastAt(findIndex)
         manifolds[findIndex].index1a = findIndex
         manifolds.pop()
     }

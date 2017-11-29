@@ -15,10 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
-import bullet.has
-import bullet.pop
-import bullet.push
-import bullet.swap
+import bullet.*
 import kotlin.collections.ArrayList
 
 var overlappingPairs = 0
@@ -414,7 +411,7 @@ class SortedOverlappingPairCache : OverlappingPairCache() {
                 cleanOverlappingPair(pair, dispatcher)
                 pair.proxy0 = null
                 pair.proxy1 = null
-                overlappingPairArray.swap(i, overlappingPairArray.lastIndex)
+                overlappingPairArray.swapLastAt(i)
                 overlappingPairArray.pop()
                 overlappingPairs--
             } else i++

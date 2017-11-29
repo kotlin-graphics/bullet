@@ -33,7 +33,7 @@ open class BroadphaseRayCallback : BroadphaseAabbCallback {
  *  Some implementations for this broadphase interface include AxisSweep3, _32BitAxisSweep3 and DbvtBroadphase.
  *  The actual overlapping pair management, storage, adding and removing of pairs is dealt by the OverlappingPairCache
  *  class.  */
-interface Broadphase {
+interface BroadphaseInterface {
 
     fun createProxy(aabbMin: Vec3, aabbMax: Vec3, shapeType: Int, userPtr: Any?, collisionFilterGroup: Int,
                     collisionFilterMask: Int, dispatcher: Dispatcher): BroadphaseProxy

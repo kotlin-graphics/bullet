@@ -157,7 +157,7 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val MAX_FRICTION = 10f
 
         // in the future we can let the user override the methods to combine restitution and friction
-        fun calculateCombinedRestitution(body0: CollisionObject, body1: CollisionObject) = body0.restitution * body1.restitution
+        fun calculateCombinedRestitution(body0: CollisionObject?, body1: CollisionObject?) = body0!!.restitution * body1!!.restitution
 
         /** User can override this material combiner by implementing contactAddedCallback and setting
          *  body0.collisionFlags |= CollisionObject.customMaterialCallback  */

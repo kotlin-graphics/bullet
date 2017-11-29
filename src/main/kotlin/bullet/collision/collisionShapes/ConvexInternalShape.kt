@@ -78,7 +78,7 @@ abstract class ConvexInternalShape : ConvexShape() {
 
     val marginNV get() = collisionMargin
 
-    override fun getNumPreferredPenetrationDirections() = 0
+    override val numPreferredPenetrationDirections = 0
 
     override fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) {
         throw Error()

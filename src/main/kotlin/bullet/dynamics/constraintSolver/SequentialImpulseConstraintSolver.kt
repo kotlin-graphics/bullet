@@ -733,10 +733,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
             val solverConstr = tmpSolverNonContactConstraintPool[j]
             val constr = solverConstr.originalContactPoint as TypedConstraint
             constr.jointFeedback?.let { fb ->
-                fb.appliedForceBodyA += solverConstr.contactNormal1 * solverConstr.appliedImpulse * constr.rbA.linearFactor / infoGlobal.timeStep
-                fb.appliedForceBodyB += solverConstr.contactNormal2 * solverConstr.appliedImpulse * constr.rbB.linearFactor / infoGlobal.timeStep
-                fb.appliedTorqueBodyA += solverConstr.relpos1CrossNormal * constr.rbA.getAngularFactor() * solverConstr.appliedImpulse / infoGlobal.timeStep
-                fb.appliedTorqueBodyB += solverConstr.relpos2CrossNormal * constr.rbB.getAngularFactor() * solverConstr.appliedImpulse / infoGlobal.timeStep /*RGM ???? */
+                fb.appliedForceBodyA += solverConstr.contactNormal1 * solverConstr.appliedImpulse * constr.rbA!!.linearFactor / infoGlobal.timeStep
+                fb.appliedForceBodyB += solverConstr.contactNormal2 * solverConstr.appliedImpulse * constr.rbB!!.linearFactor / infoGlobal.timeStep
+                fb.appliedTorqueBodyA += solverConstr.relpos1CrossNormal * constr.rbA!!.getAngularFactor() * solverConstr.appliedImpulse / infoGlobal.timeStep
+                fb.appliedTorqueBodyB += solverConstr.relpos2CrossNormal * constr.rbB!!.getAngularFactor() * solverConstr.appliedImpulse / infoGlobal.timeStep /*RGM ???? */
             }
             constr.appliedImpulse = solverConstr.appliedImpulse
             if (abs(solverConstr.appliedImpulse) >= constr.breakingImpulseThreshold)
@@ -813,8 +813,8 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         if (iteration < infoGlobal.numIterations) {
             for (j in 0 until numConstraints)
                 if (constraints[j].isEnabled) {
-                    val bodyAid = getOrInitSolverBody(constraints[j].rbA, infoGlobal.timeStep)
-                    val bodyBid = getOrInitSolverBody(constraints[j].rbB, infoGlobal.timeStep)
+                    val bodyAid = getOrInitSolverBody(constraints[j].rbA!!, infoGlobal.timeStep)
+                    val bodyBid = getOrInitSolverBody(constraints[j].rbB!!, infoGlobal.timeStep)
                     val bodyA = tmpSolverBodyPool[bodyAid]
                     val bodyB = tmpSolverBodyPool[bodyBid]
                     constraints[j].solveConstraintObsolete(bodyA, bodyB, infoGlobal.timeStep)
@@ -1009,8 +1009,8 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
                 val rbA = constraint.rbA
                 val rbB = constraint.rbB
 
-                val solverBodyIdA = getOrInitSolverBody(rbA, infoGlobal.timeStep)
-                val solverBodyIdB = getOrInitSolverBody(rbB, infoGlobal.timeStep)
+                val solverBodyIdA = getOrInitSolverBody(rbA!!, infoGlobal.timeStep)
+                val solverBodyIdB = getOrInitSolverBody(rbB!!, infoGlobal.timeStep)
 
                 val bodyAPtr = tmpSolverBodyPool[solverBodyIdA]
                 val bodyBPtr = tmpSolverBodyPool[solverBodyIdB]
@@ -1077,10 +1077,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
                     solverConstraint.originalContactPoint = constraint
 
                     val ftorqueAxis1 = solverConstraint.relpos1CrossNormal
-                    solverConstraint.angularComponentA put constraint.rbA.invInertiaTensorWorld * ftorqueAxis1 * constraint.rbA.getAngularFactor()
+                    solverConstraint.angularComponentA put constraint.rbA!!.invInertiaTensorWorld * ftorqueAxis1 * constraint.rbA!!.getAngularFactor()
 
                     val ftorqueAxis2 = solverConstraint.relpos2CrossNormal
-                    solverConstraint.angularComponentB put constraint.rbB.invInertiaTensorWorld * ftorqueAxis2 * constraint.rbB.getAngularFactor()
+                    solverConstraint.angularComponentB put constraint.rbB!!.invInertiaTensorWorld * ftorqueAxis2 * constraint.rbB!!.getAngularFactor()
 
                     val iMJlA = solverConstraint.contactNormal1 * rbA.inverseMass
                     val iMJaA = rbA.invInertiaTensorWorld * solverConstraint.relpos1CrossNormal

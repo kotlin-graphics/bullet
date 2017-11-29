@@ -1,12 +1,9 @@
 package bullet.collision.narrowPhaseCollision
 
+import bullet.DEBUG_DRAW
 import bullet.collision.collisionShapes.ConvexShape
 import bullet.collision.collisionShapes.MAX_PREFERRED_PENETRATION_DIRECTIONS
-import bullet.linearMath.DebugDraw
-import bullet.linearMath.LARGE_FLOAT
-import bullet.linearMath.Transform
-import bullet.linearMath.Vec3
-import bullet.linearMath.times
+import bullet.linearMath.*
 
 private val NUM_UNITSPHERE_POINTS = 42
 
@@ -127,52 +124,90 @@ class MinkowskiPenetrationDepthSolver : ConvexPenetrationDepthSolver {
         if (minProj < 0f) return false
 
         val extraSeparation = 0.5f // scale dependent
-        minProj += extraSeparation + (convexA.getMarginNonVirtual()+convexB.getMarginNonVirtual())
+        minProj += extraSeparation + (convexA.getMarginNonVirtual() + convexB.getMarginNonVirtual())
 
-        val gjkdet = GjkPairDetector (convexA, convexB, simplexSolver, null)
+        val gjkdet = GjkPairDetector(convexA, convexB, simplexSolver, null)
 
         val offsetDist = minProj
         val offset = minNorm * offsetDist
 
-        val input = GjkPairDetector.ClosestPointInput
+        val input = DiscreteCollisionDetectorInterface.ClosestPointInput()
 
-        btVector3 newOrg = transA . getOrigin () + offset;
+        val newOrg = transA.origin + offset
 
-        btTransform displacedTrans = transA;
-        displacedTrans.setOrigin(newOrg);
+        val displacedTrans = Transform(transA).apply { origin put newOrg }
 
-        input.m_transformA = displacedTrans;
-        input.m_transformB = transB;
-        input.m_maximumDistanceSquared = btScalar(BT_LARGE_FLOAT);//minProj;
+        input.transformA put displacedTrans
+        input.transformB put transB
+        input.maximumDistanceSquared = LARGE_FLOAT //minProj;
 
-        btIntermediateResult res;
-        gjkdet.setCachedSeperatingAxis(-minNorm);
-        gjkdet.getClosestPoints(input, res, debugDraw);
+        val res = IntermediateResult()
+        gjkdet.cachedSeparatingAxis put -minNorm
+        gjkdet.getClosestPoints(input, res, debugDraw)
 
-        btScalar correctedMinNorm = minProj -res.m_depth;
-
+        val correctedMinNorm = minProj - res.depth
 
         //the penetration depth is over-estimated, relax it
-        btScalar penetration_relaxation = btScalar (1.);
-        minNorm *= penetration_relaxation;
+        val penetrationRelaxation = 1f
+        minNorm *= penetrationRelaxation
 
+        if (res.hasResult) {
+            pa put res.pointInWorld - minNorm * correctedMinNorm // TODO check
+            pb put res.pointInWorld
+            v put minNorm
 
-        if (res.m_hasResult) {
-
-            pa = res.m_pointInWorld - minNorm * correctedMinNorm;
-            pb = res.m_pointInWorld;
-            v = minNorm;
-
-            #ifdef DEBUG_DRAW
-                    if (debugDraw) {
-                        btVector3 color (1, 0, 0);
-                        debugDraw->drawLine(pa, pb, color);
-                    }
-            #endif//DEBUG_DRAW
-
-
+            if (DEBUG_DRAW)
+                debugDraw?.let {
+                    val color = Vec3(1, 0, 0)
+//                        debugDraw.drawLine(pa, pb, color) TODO
+                }
         }
-        return res.m_hasResult;
+        return res.hasResult
     }
 
+    companion object {
+        val penetrationDirections = arrayOf(
+                Vec3(+0.000000, -0.000000, -1.000000),
+                Vec3(+0.723608, -0.525725, -0.447219),
+                Vec3(-0.276388, -0.850649, -0.447219),
+                Vec3(-0.894426, -0.000000, -0.447216),
+                Vec3(-0.276388, +0.850649, -0.447220),
+                Vec3(+0.723608, +0.525725, -0.447219),
+                Vec3(+0.276388, -0.850649, +0.447220),
+                Vec3(-0.723608, -0.525725, +0.447219),
+                Vec3(-0.723608, +0.525725, +0.447219),
+                Vec3(+0.276388, +0.850649, +0.447219),
+                Vec3(+0.894426, +0.000000, +0.447216),
+                Vec3(-0.000000, +0.000000, +1.000000),
+                Vec3(+0.425323, -0.309011, -0.850654),
+                Vec3(-0.162456, -0.499995, -0.850654),
+                Vec3(+0.262869, -0.809012, -0.525738),
+                Vec3(+0.425323, +0.309011, -0.850654),
+                Vec3(+0.850648, -0.000000, -0.525736),
+                Vec3(-0.525730, -0.000000, -0.850652),
+                Vec3(-0.688190, -0.499997, -0.525736),
+                Vec3(-0.162456, +0.499995, -0.850654),
+                Vec3(-0.688190, +0.499997, -0.525736),
+                Vec3(+0.262869, +0.809012, -0.525738),
+                Vec3(+0.951058, +0.309013, +0.000000),
+                Vec3(+0.951058, -0.309013, +0.000000),
+                Vec3(+0.587786, -0.809017, +0.000000),
+                Vec3(+0.000000, -1.000000, +0.000000),
+                Vec3(-0.587786, -0.809017, +0.000000),
+                Vec3(-0.951058, -0.309013, -0.000000),
+                Vec3(-0.951058, +0.309013, -0.000000),
+                Vec3(-0.587786, +0.809017, -0.000000),
+                Vec3(-0.000000, +1.000000, -0.000000),
+                Vec3(+0.587786, +0.809017, -0.000000),
+                Vec3(+0.688190, -0.499997, +0.525736),
+                Vec3(-0.262869, -0.809012, +0.525738),
+                Vec3(-0.850648, +0.000000, +0.525736),
+                Vec3(-0.262869, +0.809012, +0.525738),
+                Vec3(+0.688190, +0.499997, +0.525736),
+                Vec3(+0.525730, +0.000000, +0.850652),
+                Vec3(+0.162456, -0.499995, +0.850654),
+                Vec3(-0.425323, -0.309011, +0.850654),
+                Vec3(-0.425323, +0.309011, +0.850654),
+                Vec3(+0.162456, +0.499995, +0.850654))
+    }
 }

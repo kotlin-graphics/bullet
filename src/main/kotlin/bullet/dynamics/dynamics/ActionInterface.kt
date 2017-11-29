@@ -13,12 +13,15 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-package bullet.linearMath
+package bullet.dynamics.dynamics
 
-/** The MotionState interface class allows the dynamics world to synchronize and interpolate
- *  the updated world transforms with graphics
- *  For optimizations, potentially only moving objects get synchronized (using setWorldPosition/setWorldOrientation)    */
-interface MotionState {
-    /** Bullet only calls the update of worldtransform for active objects   */
-    var worldTransform: Transform
+import bullet.collision.collisionDispatch.CollisionWorld
+import bullet.linearMath.DebugDraw
+
+/** Basic interface to allow actions such as vehicles and characters to be updated inside a DynamicsWorld */
+interface ActionInterface {
+
+    fun updateAction( collisionWorld: CollisionWorld, deltaTimeStep: Float)
+    fun debugDraw(debugDrawer: DebugDraw)
+//    static btRigidBody& getFixedBody()
 }

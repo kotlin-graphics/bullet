@@ -102,14 +102,14 @@ open class CollisionObject {
 
     var collisionFlags = CF.STATIC_OBJECT.i
 
-    var islandTag1 = -1
+    var islandTag = -1
     var companionId = -1
     /** index of object in world's collisionObjects array. It should be called only by CollisionWorld   */
     var worldArrayIndex = -1
 
-    var activationState1 = 1
+    var activationState = 1
         set(value) {
-            if (activationState1 != DISABLE_DEACTIVATION && activationState1 != DISABLE_SIMULATION)
+            if (activationState != DISABLE_DEACTIVATION && activationState != DISABLE_SIMULATION)
                 field = value
         }
     var deactivationTime = 0f
@@ -256,17 +256,17 @@ open class CollisionObject {
     fun checkCollideWithOverride(co: CollisionObject) = !objectsWithoutCollisionCheck.contains(co)
 
     fun forceActiavationState(newState: Int) {
-        activationState1 = newState
+        activationState = newState
     }
 
     fun activate(forceActivation: Boolean = false) {
         if (forceActivation || collisionFlags hasnt (CF.STATIC_OBJECT.i or CF.KINEMATIC_OBJECT.i)) {
-            activationState1 = ACTIVE_TAG
+            activationState = ACTIVE_TAG
             deactivationTime = 0f
         }
     }
 
-    val isActive get() = activationState1 != ISLAND_SLEEPING && activationState1 != DISABLE_SIMULATION
+    val isActive get() = activationState != ISLAND_SLEEPING && activationState != DISABLE_SIMULATION
 
     fun setContactStiffnessAndDamping(stiffness: Float, damping: Float) {
         updateRevision++

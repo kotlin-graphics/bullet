@@ -26,8 +26,8 @@ import bullet.collision.collisionDispatch.CollisionObject.CollisionFlags as Cf
 import bullet.collision.collisionDispatch.CollisionObject.CollisionObjectTypes as Cot
 
 // 'temporarily' global variables
-val deactivationTime = 2f
-val disableDeactivation = false
+val gDeactivationTime = 2f
+var gDisableDeactivation = false
 var uniqueId = 0
 
 //island management, m_activationState1
@@ -209,7 +209,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     companion object {
         /** to keep collision detection and dynamics separate we don't store a rigidbody pointer but a rigidbody is derived
          *  from CollisionObject, so we can safely perform an upcast    */
-        fun upcast(colObj: CollisionObject) = if (colObj.internalType has Cot.RIGID_BODY) colObj as RigidBody else null
+        fun upcast(colObj: CollisionObject): RigidBody? = if (colObj.internalType has Cot.RIGID_BODY) colObj as RigidBody else null
     }
 
     /** continuous collision detection needs prediction */
@@ -397,27 +397,27 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     }
 
     fun updateDeactivation(timeStep: Float) {
-        if (activationState1 == ISLAND_SLEEPING || activationState1 == DISABLE_DEACTIVATION) return
+        if (activationState == ISLAND_SLEEPING || activationState == DISABLE_DEACTIVATION) return
         if (_linearVelocity.length2() < linearSleepingThreshold * linearSleepingThreshold &&
                 _angularVelocity.length2() < angularSleepingThreshold * angularSleepingThreshold)
             deactivationTime += timeStep
         else {
             deactivationTime = 0f
-            activationState1 = 0
+            activationState = 0
         }
     }
 
-    fun wantsSleeping() = when {
-        activationState1 == DISABLE_DEACTIVATION -> false
+    val wantsSleeping get() = when {
+        activationState == DISABLE_DEACTIVATION -> false
     //disable deactivation
-        disableDeactivation || deactivationTime == 0f -> false
-        activationState1 == ISLAND_SLEEPING || activationState1 == WANTS_DEACTIVATION -> true
+        gDisableDeactivation || deactivationTime == 0f -> false
+        activationState == ISLAND_SLEEPING || activationState == WANTS_DEACTIVATION -> true
         deactivationTime > deactivationTime -> true
         else -> false
     }
 
     /** MotionState allows to automatic synchronize the world transform for active objects  */
-    fun getMotionState() = optionalMotionState
+    val motionState get() = optionalMotionState
 
     fun setMotionState(motionState: MotionState?) {
         optionalMotionState = motionState
@@ -449,8 +449,8 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         //  don't add constraints that are already referenced
         if (index == constraintRefs.size) {
             constraintRefs push c
-            val colObjA = c.rbA
-            val colObjB = c.rbB
+            val colObjA = c.rbA!!
+            val colObjB = c.rbB!!
             if (colObjA === this)
                 colObjA.setIgnoreCollisionCheck(colObjB, true)
             else
@@ -463,8 +463,8 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         //don't remove constraints that are not referenced
         if (index < constraintRefs.size) {
             constraintRefs.remove(c)
-            val colObjA = c.rbA
-            val colObjB = c.rbB
+            val colObjA = c.rbA!!
+            val colObjB = c.rbB!!
             if (colObjA === this)
                 colObjA.setIgnoreCollisionCheck(colObjB, false)
             else

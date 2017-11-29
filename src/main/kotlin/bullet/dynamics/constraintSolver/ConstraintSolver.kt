@@ -15,10 +15,10 @@ subject to the following restrictions:
 
 package bullet.dynamics.constraintSolver
 
+import bullet.collision.broadphaseCollision.Dispatcher
 import bullet.collision.collisionDispatch.CollisionObject
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.linearMath.DebugDraw
-import sun.plugin.com.Dispatcher
 
 enum class ConstraintSolverType { SEQUENTIAL_IMPULSE_SOLVER, MLCP_SOLVER, NNCG_SOLVER;
 
@@ -31,8 +31,8 @@ abstract class ConstraintSolver {
 
     /** solve a group of constraints    */
     fun solveGroup(bodies: ArrayList<CollisionObject>, numBodies: Int,
-                   manifold: ArrayList<PersistentManifold>, numManifolds: Int,
-                   constraints: ArrayList<TypedConstraint>, numConstraints: Int,
+                   manifold: List<PersistentManifold>, numManifolds: Int,
+                   constraints: List<TypedConstraint>, numConstraints: Int,
                    info: ContactSolverInfo, debugDrawer: DebugDraw, dispatcher: Dispatcher) = 0f
 
     fun allSolved(info: ContactSolverInfo, debugDrawer: DebugDraw) = Unit

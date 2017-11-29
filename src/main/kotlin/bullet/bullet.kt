@@ -72,7 +72,8 @@ infix fun Int.wo(b: Int) = this and b.inv()
 val Int.Companion.BYTES get() = 4
 val Float.Companion.BYTES get() = 4
 
-var DEBUG = true
+val DEBUG = true
+val DEBUG_DRAW = false
 
 
 infix fun <T> ArrayList<T>.push(element: T) = add(element)
@@ -82,12 +83,21 @@ fun <T> ArrayList<T>.pop(): T {
     return last
 }
 
+fun <T> ArrayList<T>.swapLastAt(index: Int) = swap(index, lastIndex)
+
 fun <T> ArrayList<T>.swap(index0: Int, index1: Int) {
-    val t = get(index0)
+    val e = get(index0)
     set(index0, get(index1))
-    set(index1, t)
+    set(index1, e)
 }
 
 
 val DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION = false
 val COMPARE_BTRAY_AABB2 = false
+val USE_PATH_COMPRESSION = true
+val USE_STATIC_ONLY = false
+val BT_NO_PROFILE = true
+
+
+/** internal debugging variable. this value shouldn't be too high */
+var gNumClampedCcdMotions = 0

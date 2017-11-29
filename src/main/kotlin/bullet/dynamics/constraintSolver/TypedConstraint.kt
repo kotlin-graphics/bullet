@@ -61,7 +61,7 @@ class JointFeedback {
 val DEFAULT_DEBUGDRAW_SIZE = 0.05f
 
 /** TypedConstraint is the baseclass for Bullet constraints and vehicles    */
-abstract class TypedConstraint(type: TypedConstraintType, var rbA: RigidBody, var rbB: RigidBody = fixedBody) : TypedObject(type.i) {
+abstract class TypedConstraint(type: TypedConstraintType, var rbA: RigidBody?, var rbB: RigidBody? = fixedBody) : TypedObject(type.i) {
 
     var userConstraintType = -1
 
