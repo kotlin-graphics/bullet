@@ -863,18 +863,3 @@ fun sort(n: DbvtNode, r: DbvtNode): DbvtNode {
 //    }
 //    return (n)
 }
-
-infix fun <T> ArrayList<T>.resize(newSize: Int) {
-    when {
-        size > newSize -> for (i in newSize until size) pop()
-        newSize > size -> when (get(0)) {
-            is Dbvt.StkNN -> for (i in size until newSize) add(Dbvt.StkNN() as T)
-            is DbvtNode -> for (i in size until newSize) add(DbvtNode() as T)
-            is BroadphasePair -> for (i in size until newSize) add(BroadphasePair() as T)
-            is TypedConstraint.ConstraintInfo1 -> for (i in size until newSize) add(TypedConstraint.ConstraintInfo1() as T)
-            is SolverConstraint -> for (i in size until newSize) add(SolverConstraint() as T)
-            is Int -> for (i in size until newSize) add(0 as T)
-            is QuantizedBvhNode -> for (i in size until newSize) add(QuantizedBvhNode() as T)
-        }
-    }
-}

@@ -35,11 +35,11 @@ abstract class CollisionAlgorithm {
         dispatcher = ci.dispatcher
     }
 
-    abstract fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo,
-                                  resultOut: ManifoldResult)
+    open fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo,
+                                  resultOut: ManifoldResult) = Unit
 
-    abstract fun calculateTimeOfImpact(body0: CollisionObject, body1: CollisionObject, dispatchInfo: DispatcherInfo,
-                                       resultOut: ManifoldResult): Float
+    open fun calculateTimeOfImpact(body0: CollisionObject, body1: CollisionObject, dispatchInfo: DispatcherInfo,
+                                       resultOut: ManifoldResult) = 0f
 
-    abstract fun getAllContactManifolds(manifoldArray: ManifoldArray)
+    open fun getAllContactManifolds(manifoldArray: ManifoldArray) = Unit
 }

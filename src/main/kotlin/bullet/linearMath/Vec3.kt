@@ -22,6 +22,7 @@ open class Vec3 {
         this.y = y
         this.z = z
     }
+
     constructor(x: Float, y: Float, z: Float, w: Float) {
         this.x = x
         this.y = y
@@ -40,6 +41,7 @@ open class Vec3 {
         w = 0f
         return this
     }
+
     fun put(floats: FloatArray, offset: Int, scaling: Vec3): Vec3 {
         x = floats[offset] * scaling.x
         y = floats[offset + 1] * scaling.y
@@ -47,6 +49,7 @@ open class Vec3 {
         w = 0f
         return this
     }
+
     fun put(doubles: DoubleArray, offset: Int, scaling: Vec3): Vec3 {
         x = doubles[offset].f * scaling.x
         y = doubles[offset + 1].f * scaling.y
@@ -312,6 +315,8 @@ open class Vec3 {
 
     infix fun dot3(m: Mat3) = Vec3(dot(m[0]), dot(m[1]), dot(m[2]))
     infix fun dot3(a: Array<Vec3>) = Vec3(dot(a[0]), dot(a[1]), dot(a[2]))
+
+    val isAlmostZero get() = abs(x) <= 1e-6f && abs(y) <= 1e-6f || abs(z) <= 1e-6f
 
     override fun equals(other: Any?) = other is Vec3 && x == other.x && y == other.y && z == other.z && w == other.w
     override fun hashCode() = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + z.hashCode()) + w.hashCode()

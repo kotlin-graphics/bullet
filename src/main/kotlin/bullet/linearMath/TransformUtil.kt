@@ -116,7 +116,7 @@ object TransformUtil {
 
 /** The ConvexSeparatingDistanceUtil can help speed up convex collision detection by conservatively updating a cached
  *  separating distance/vector instead of re-calculating the closest distance   */
-class ConvexSeparatingDistanceUtil(boundingRadiusA: Float, boundingRadiusB: Float) {
+class ConvexSeparatingDistanceUtil(var boundingRadiusA: Float, var boundingRadiusB: Float) {
     val ornA = Quat()
     val ornB = Quat()
     val posA = Vec3()
@@ -124,8 +124,6 @@ class ConvexSeparatingDistanceUtil(boundingRadiusA: Float, boundingRadiusB: Floa
 
     val separatingNormal = Vec3()
 
-    var boundingRadiusA = boundingRadiusA
-    var boundingRadiusB = boundingRadiusB
     var separatingDistance = 0f
 
     fun updateSeparatingDistance(transA: Transform, transB: Transform) {

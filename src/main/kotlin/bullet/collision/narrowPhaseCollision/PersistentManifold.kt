@@ -33,11 +33,11 @@ typealias ContactDestroyedCallback = (Any) -> Boolean
 typealias ContactProcessedCallback = (ManifoldPoint, Any?, Any?) -> Boolean
 typealias ContactStartedCallback = (PersistentManifold) -> Unit
 typealias ContactEndedCallback = (PersistentManifold) -> Unit
-var contactBreakingThreshold = 0.02f
-var contactDestroyedCallback: ContactDestroyedCallback? = null
-var contactProcessedCallback: ContactProcessedCallback? = null
-var contactStartedCallback: ContactStartedCallback? = null
-var contactEndedCallback: ContactEndedCallback? = null
+var gContactBreakingThreshold = 0.02f
+var gContactDestroyedCallback: ContactDestroyedCallback? = null
+var gContactProcessedCallback: ContactProcessedCallback? = null
+var gContactStartedCallback: ContactStartedCallback? = null
+var gContactEndedCallback: ContactEndedCallback? = null
 
 /** contactCalcArea3Points will approximate the convex hull area using 3 points
  *  when setting it to false, it will use 4 points to compute the area: it is more accurate but slower  */
@@ -144,7 +144,7 @@ class PersistentManifold : TypedObject {
     fun clearUserCache(pt: ManifoldPoint) {
         val oldPtr = pt.userPersistentData
         oldPtr?.let {
-            contactDestroyedCallback?.let {
+            gContactDestroyedCallback?.let {
                 it(oldPtr)
                 pt.userPersistentData = null
             }
@@ -217,7 +217,7 @@ class PersistentManifold : TypedObject {
         assert(pointCache[lastUsedIndex].userPersistentData == null)
         cachedPoints--
 
-        if (cachedPoints == 0) contactEndedCallback?.invoke(this)
+        if (cachedPoints == 0) gContactEndedCallback?.invoke(this)
     }
 
     fun replaceContactPoint(newPoint: ManifoldPoint, insertIndex: Int) {
@@ -287,7 +287,7 @@ class PersistentManifold : TypedObject {
                 val distance2d = projectedDifference dot projectedDifference
                 if (distance2d > contactBreakingThreshold * contactBreakingThreshold)
                     removeContactPoint(i)
-                else contactProcessedCallback?.invoke(mp, body0, body1) //contact point processed callback
+                else gContactProcessedCallback?.invoke(mp, body0, body1) //contact point processed callback
             }
             i--
         }
@@ -295,7 +295,7 @@ class PersistentManifold : TypedObject {
 
     fun clearManifold() {
         for (i in 0 until cachedPoints) clearUserCache(pointCache[i])
-        if (cachedPoints != 0) contactEndedCallback?.invoke(this)
+        if (cachedPoints != 0) gContactEndedCallback?.invoke(this)
         cachedPoints = 0
     }
 }

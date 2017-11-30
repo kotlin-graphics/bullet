@@ -19,7 +19,7 @@ import bullet.*
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 import bullet.collision.narrowPhaseCollision.PersistentManifold
-import bullet.collision.narrowPhaseCollision.contactBreakingThreshold
+import bullet.collision.narrowPhaseCollision.gContactBreakingThreshold
 import kotlin.math.min
 import bullet.collision.broadphaseCollision.DispatcherQueryType as DQT
 import bullet.collision.collisionDispatch.CollisionDispatcher.DispatcherFlags as DF
@@ -75,8 +75,8 @@ class CollisionDispatcher(val collisionConfiguration: CollisionConfiguration) : 
         numManifold++
         // optional relative contact breaking threshold, turned on by default (use setDispatcherFlags to switch off feature for improved performance)
         val contactBreakingThreshold = if (dispatcherFlags has DF.USE_RELATIVE_CONTACT_BREAKING_THRESHOLD.i)
-            min(body0.collisionShape!!.getContactBreakingThreshold(contactBreakingThreshold), body1.collisionShape!!.getContactBreakingThreshold(contactBreakingThreshold))
-        else contactBreakingThreshold
+            min(body0.collisionShape!!.getContactBreakingThreshold(gContactBreakingThreshold), body1.collisionShape!!.getContactBreakingThreshold(gContactBreakingThreshold))
+        else gContactBreakingThreshold
 
         val contactProcessingThreshold = min(body0.contactProcessingThreshold, body1.contactProcessingThreshold)
 

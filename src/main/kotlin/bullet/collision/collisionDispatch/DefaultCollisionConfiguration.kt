@@ -31,24 +31,37 @@ class DefaultCollisionConstructionInfo {
  *  todo: describe the meaning  */
 class DefaultCollisionConfiguration(
         constructionInfo: DefaultCollisionConstructionInfo = DefaultCollisionConstructionInfo()
-) :
-        CollisionConfiguration() {
+) : CollisionConfiguration() {
 
     private var persistentManifoldPoolSize = 0
 
-
     //    btPoolAllocator*	m_persistentManifoldPool;
     private var ownsPersistentManifoldPool = false
-
 
     //    btPoolAllocator*	m_collisionAlgorithmPool;
     private var ownsCollisionAlgorithmPool = false
 
     /** default penetration depth solver    */
-    val	pdSolver = if(constructionInfo.useEpaPenetrationAlgorithm) GjkEpaPenetrationDepthSolver() else MinkowskiPenetrationDepthSolver()
+    val solver = if (constructionInfo.useEpaPenetrationAlgorithm) GjkEpaPenetrationDepthSolver() else MinkowskiPenetrationDepthSolver()
 
     //default CreationFunctions, filling the m_doubleDispatch table
+    val convexConvexCreateFunc = ConvexConvexAlgorithm.CreateFunc(solver)
+    val convexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm
+    swappedConvexConcaveCreateFunc;
+    compoundCreateFunc;
+    compoundCompoundCreateFunc;
 
+    swappedCompoundCreateFunc;
+    emptyCreateFunc;
+    sphereSphereCF;
+    sphereBoxCF;
+    boxSphereCF;
+
+    boxBoxCF;
+    sphereTriangleCF;
+    triangleSphereCF;
+    planeConvexCF;
+    convexPlaneCF;
 
     override fun getCollisionAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.

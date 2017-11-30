@@ -1,5 +1,13 @@
 package bullet
 
+import bullet.collision.broadphaseCollision.BroadphasePair
+import bullet.collision.broadphaseCollision.Dbvt
+import bullet.collision.broadphaseCollision.DbvtNode
+import bullet.collision.broadphaseCollision.QuantizedBvhNode
+import bullet.dynamics.constraintSolver.SolverConstraint
+import bullet.dynamics.constraintSolver.TypedConstraint
+import bullet.linearMath.Vec3
+
 
 //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //
@@ -91,12 +99,34 @@ fun <T> ArrayList<T>.swap(index0: Int, index1: Int) {
     set(index1, e)
 }
 
+infix fun <T> ArrayList<T>.resize(newSize: Int) {
+    when {
+        size > newSize -> for (i in newSize until size) pop()
+        newSize > size -> when (get(0)) {
+            is Dbvt.StkNN -> for (i in size until newSize) add(Dbvt.StkNN() as T)
+            is DbvtNode -> for (i in size until newSize) add(DbvtNode() as T)
+            is BroadphasePair -> for (i in size until newSize) add(BroadphasePair() as T)
+            is TypedConstraint.ConstraintInfo1 -> for (i in size until newSize) add(TypedConstraint.ConstraintInfo1() as T)
+            is SolverConstraint -> for (i in size until newSize) add(SolverConstraint() as T)
+            is Int -> for (i in size until newSize) add(0 as T)
+            is Vec3 -> for (i in size until newSize) add(Vec3() as T)
+            is QuantizedBvhNode -> for (i in size until newSize) add(QuantizedBvhNode() as T)
+        }
+    }
+}
+
 
 val DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION = false
 val COMPARE_BTRAY_AABB2 = false
 val USE_PATH_COMPRESSION = true
 val USE_STATIC_ONLY = false
 val BT_NO_PROFILE = true
+val USE_SEPDISTANCE_UTIL2 = false
+val DISABLE_CAPSULE_CAPSULE_COLLIDER = true
+val TEST_INTERNAL_OBJECTS = true
+val ONLY_REPORT_DEEPEST_POINT = false
+val ZERO_MARGIN = false
+val DEBUG_CONTACTS = false
 
 
 /** internal debugging variable. this value shouldn't be too high */

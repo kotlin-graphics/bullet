@@ -29,7 +29,7 @@ var contactAddedCallback: ContactAddedCallback? = null
 /** ManifoldResult is a helper class to manage  contact results.    */
 open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
 
-    var manifoldPtr: PersistentManifold? = null
+    var manifold: PersistentManifold? = null
 
     var body0Wrap: CollisionObjectWrapper? = null
     var body1Wrap: CollisionObjectWrapper? = null
@@ -57,7 +57,7 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
     }
 
     override fun addContactPoint(normalOnBInWorld: Vec3, pointInWorld: Vec3, depth: Float) {
-        val manifoldPtr = manifoldPtr!!
+        val manifoldPtr = manifold!!
         val body0Wrap = body0Wrap!!
         val body1Wrap = body1Wrap!!
         val co0 = body0Wrap.collisionObject!!
@@ -135,11 +135,11 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
                 it(manifoldPtr.getContactPoint(insertIndex), obj0Wrap, newPt.partId0, newPt.index0, obj1Wrap, newPt.partId1, newPt.index1)
             }
         }
-        contactStartedCallback?.let { if (isNewCollision) it(manifoldPtr) }
+        gContactStartedCallback?.let { if (isNewCollision) it(manifoldPtr) }
     }
 
     fun refreshContactPoints() {
-        val manifoldPtr = manifoldPtr!!
+        val manifoldPtr = manifold!!
         if (manifoldPtr.numContacts == 0) return
         val co0 = body0Wrap!!.collisionObject!!
         val co1 = body1Wrap!!.collisionObject!!

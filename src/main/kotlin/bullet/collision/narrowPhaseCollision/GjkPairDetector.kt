@@ -34,7 +34,7 @@ private val gjkEpaPenetrationTolerance = 0.001f
 
 /** GjkPairDetector uses GJK to implement the DiscreteCollisionDetector    */
 class GjkPairDetector(
-        val minkowskiA: ConvexShape, val minkowskiB: ConvexShape,
+        var minkowskiA: ConvexShape, var minkowskiB: ConvexShape,
         val shapeTypeA: Int, val shapeTypeB: Int,
         val marginA: Float, val marginB: Float,
         val simplexSolver: SimplexSolverInterface?,

@@ -106,7 +106,7 @@ open class CollisionWorld
         val maxAabb = Vec3()
         colObj.collisionShape!!.getAabb(colObj.getWorldTransform(), minAabb, maxAabb)
         // need to increase the aabb for contact thresholds
-        val contactThreshold = Vec3(contactBreakingThreshold)
+        val contactThreshold = Vec3(gContactBreakingThreshold)
         minAabb -= contactThreshold
         maxAabb += contactThreshold
 
@@ -1153,7 +1153,7 @@ class BridgedManifoldResult(obj0Wrap: CollisionObjectWrapper, obj1Wrap: Collisio
 
     override fun addContactPoint(normalOnBInWorld: Vec3, pointInWorld: Vec3, depth: Float) {
 
-        val isSwapped = manifoldPtr!!.body0 !== body0Wrap!!.collisionObject
+        val isSwapped = manifold!!.body0 !== body0Wrap!!.collisionObject
         val pointA = pointInWorld + normalOnBInWorld * depth
         val localA = Vec3()
         val localB = Vec3()
