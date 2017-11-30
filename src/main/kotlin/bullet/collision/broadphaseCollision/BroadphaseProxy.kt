@@ -130,6 +130,8 @@ open class BroadphaseProxy {
     }
 }
 
+infix fun BroadphaseProxy.CollisionFilterGroups.xor(other: BroadphaseProxy.CollisionFilterGroups) = i xor other.i
+
 /** The BroadphasePair class contains a pair of aabb-overlapping objects.
  *  A Dispatcher can search a CollisionAlgorithm that performs exact/narrowphase collision detection
  *  on the actual collision shapes. */

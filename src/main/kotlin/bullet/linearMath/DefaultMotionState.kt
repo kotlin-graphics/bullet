@@ -15,11 +15,17 @@ subject to the following restrictions:
 
 package bullet.linearMath
 
-/** The MotionState interface class allows the dynamics world to synchronize and interpolate
- *  the updated world transforms with graphics
- *  For optimizations, potentially only moving objects get synchronized (using setWorldPosition/setWorldOrientation)    */
-interface MotionState {
-    /** Bullet only calls the update of worldtransform for active objects   */
-    fun setWorldTransform(worldTransform: Transform)
-    fun getWorldTransform(worldTransform: Transform)
+/** The DefaultMotionState provides a common implementation to synchronize world transforms with offsets. */
+class DefaultMotionState(val startWorldTrans: Transform = Transform.identity,
+                         val centerOfMassOffset: Transform = Transform.identity) : MotionState {
+
+    val graphicsWorldTrans = Transform(startWorldTrans)
+    var userPointer: Any? = null
+
+    /** synchronizes world transform from user to physics */
+    override fun getWorldTransform(worldTransform: Transform ) = worldTransform put graphicsWorldTrans * centerOfMassOffset.inverse()
+
+    /** synchronizes world transform from physics to user
+     *  Bullet only calls the update of worldtransform for active objects */
+    override fun setWorldTransform(worldTransform: Transform) = graphicsWorldTrans put worldTransform * centerOfMassOffset // TODO check
 }

@@ -18,25 +18,131 @@ package bullet
 import bullet.collision.broadphaseCollision.DbvtBroadphase
 import bullet.collision.collisionDispatch.CollisionDispatcher
 import bullet.collision.collisionDispatch.DefaultCollisionConfiguration
+import bullet.collision.collisionShapes.BoxShape
+import bullet.collision.collisionShapes.CollisionShape
+import bullet.collision.collisionShapes.SphereShape
 import bullet.dynamics.constraintSolver.SequentialImpulseConstraintSolver
+import bullet.dynamics.dynamics.DiscreteDynamicsWorld
+import bullet.dynamics.dynamics.RigidBody
+import bullet.linearMath.DefaultMotionState
+import bullet.linearMath.Transform
+import bullet.linearMath.Vec3
 import io.kotlintest.specs.StringSpec
 
 /** This is a Hello World program for running a basic Bullet physics simulation */
 class HelloWorld : StringSpec() {
 
-    // -----initialization_start-----
+    init {
 
-    // Collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
-    val collisionConfiguration = DefaultCollisionConfiguration()
+        // -----initialization_start-----
 
-    // Use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
-    val dispatcher = CollisionDispatcher(collisionConfiguration)
+        // Collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
+        val collisionConfiguration = DefaultCollisionConfiguration()
 
-    // DbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
-    val overlappingPairCache = DbvtBroadphase()
+        // Use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
+        val dispatcher = CollisionDispatcher(collisionConfiguration)
 
-    // The default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-    val solver = SequentialImpulseConstraintSolver()
+        // DbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
+        val overlappingPairCache = DbvtBroadphase()
 
-    val dynamicsWorld = DiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+        // The default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
+        val solver = SequentialImpulseConstraintSolver()
+
+        val dynamicsWorld = DiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration).apply {
+            gravity = Vec3(0, -10, 0)
+        }
+
+        // ----- initialization end -----
+
+
+        /* keep track of the shapes, we release memory at exit.
+        make sure to re-use collision shapes among rigid bodies whenever possible!     */
+        val collisionShapes = ArrayList<CollisionShape>()
+
+
+        // ----- create a few basic rigid bodies -----
+
+        /* the ground is a cube of side 100 at position y = -56.
+        the sphere will hit it at y = -6, with center at -5     */
+        run {
+            val groundShape = BoxShape(Vec3(50f))
+
+            collisionShapes.add(groundShape)
+
+            val groundTransform = Transform().apply {
+                setIdentity()
+                origin = Vec3(0, -56, 0)
+            }
+
+            val mass = 0f
+
+            // rigidbody is dynamic if and only if mass is non zero, otherwise static
+            val isDynamic = mass != 0f
+
+            val localInertia = Vec3()
+            if (isDynamic)
+                groundShape.calculateLocalInertia(mass, localInertia)
+
+            //using motionstate is optional, it provides interpolation capabilities, and only synchronizes 'active' objects
+            val myMotionState = DefaultMotionState(groundTransform)
+            val rbInfo = RigidBody.RigidBodyConstructionInfo(mass, myMotionState, groundShape, localInertia)
+            val body = RigidBody(rbInfo)
+
+            //add the body to the dynamics world
+            dynamicsWorld.addRigidBody(body)
+        }
+
+        run {
+            // ----- create a dynamic rigidbody -----
+
+            //btCollisionShape* colShape = new btBoxShape(btVector3(1,1,1));
+            val colShape = SphereShape(1f)
+            collisionShapes.add(colShape)
+
+            // Create Dynamic Objects
+            val startTransform = Transform().apply { setIdentity() }
+
+            val mass = 1f
+
+            // rigidbody is dynamic if and only if mass is non zero, otherwise static
+            val isDynamic = mass != 0f
+
+            val localInertia = Vec3()
+            if (isDynamic)
+                colShape.calculateLocalInertia(mass, localInertia)
+
+            startTransform.origin = Vec3(2, 10, 0)
+
+            //using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+            val myMotionState = DefaultMotionState (startTransform)
+            val rbInfo = RigidBody.RigidBodyConstructionInfo (mass, myMotionState, colShape, localInertia)
+            val body = RigidBody (rbInfo)
+
+            dynamicsWorld.addRigidBody(body)
+        }
+
+        // Do some simulation
+
+        // ----- stepsimulation start -----
+
+        for (i in 0..149)        {
+
+            dynamicsWorld.stepSimulation(1f / 60f, 10)
+
+            // print positions of all objects
+            for (j in dynamicsWorld.numCollisionObjects - 1 downTo 0)            {
+
+                val obj = dynamicsWorld.collisionObjects[j]
+                val body = RigidBody.upcast(obj)
+                val trans = Transform()
+                if (body != null)
+                    body.motionState?.getWorldTransform(trans)
+                else
+                    trans put obj.getWorldTransform()
+                println("world pos object $j = ${trans.origin.x},${trans.origin.y},${trans.origin.z}")
+            }
+        }
+
+        ///-----stepsimulation_end-----
+    }
 }

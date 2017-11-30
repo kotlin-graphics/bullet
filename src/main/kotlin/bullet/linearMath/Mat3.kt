@@ -410,6 +410,10 @@ class Mat3 {
 
     override fun equals(other: Any?) = other is Mat3 && el[0] == other.el[0] && el[1] == other.el[1] && el[2] == other.el[2]
     override fun hashCode() = 31 * (31 * el[0].hashCode() + el[1].hashCode()) + el[2].hashCode()
+
+    companion object {
+        val identity get() = Mat3(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)
+    }
 }
 
 operator fun Vec3.times(m: Mat3) = Vec3(m tdotx this, m tdoty this, m tdotz this)

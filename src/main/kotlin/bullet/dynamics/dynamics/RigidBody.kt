@@ -407,14 +407,15 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         }
     }
 
-    val wantsSleeping get() = when {
-        activationState == DISABLE_DEACTIVATION -> false
-    //disable deactivation
-        gDisableDeactivation || deactivationTime == 0f -> false
-        activationState == ISLAND_SLEEPING || activationState == WANTS_DEACTIVATION -> true
-        deactivationTime > deactivationTime -> true
-        else -> false
-    }
+    val wantsSleeping
+        get() = when {
+            activationState == DISABLE_DEACTIVATION -> false
+        //disable deactivation
+            gDisableDeactivation || deactivationTime == 0f -> false
+            activationState == ISLAND_SLEEPING || activationState == WANTS_DEACTIVATION -> true
+            deactivationTime > deactivationTime -> true
+            else -> false
+        }
 
     /** MotionState allows to automatic synchronize the world transform for active objects  */
     val motionState get() = optionalMotionState

@@ -122,4 +122,9 @@ class Transform {
 
     override fun equals(other: Any?) = other is Transform && basis == other.basis && origin == other.origin
     override fun hashCode() = 31 * basis.hashCode() + origin.hashCode()
+
+    companion object {
+        /**@brief Return an identity transform */
+        val identity get() = Transform(Mat3.identity)
+    }
 }

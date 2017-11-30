@@ -176,7 +176,7 @@ class BoxShape(boxHalfExtents: Vec3) : PolyhedralConvexShape() {
 
     override val name get() = "Box"
 
-    override fun getNumPreferredPenetrationDirections() = 6
+    override val numPreferredPenetrationDirections get() = 6
 
     override fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) {
         when (index) {

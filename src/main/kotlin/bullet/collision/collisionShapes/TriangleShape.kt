@@ -106,7 +106,7 @@ class TriangleShape : PolyhedralConvexShape {
 
     override val name get() = "Triangle"
 
-    override fun getNumPreferredPenetrationDirections() = 2
+    override val numPreferredPenetrationDirections get() = 2
 
     override fun getPreferredPenetrationDirection(index: Int, penetrationVector: Vec3) {
         calcNormal(penetrationVector)
