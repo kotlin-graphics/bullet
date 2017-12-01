@@ -45,17 +45,15 @@ class DefaultCollisionConfiguration(
     val solver = if (constructionInfo.useEpaPenetrationAlgorithm) GjkEpaPenetrationDepthSolver() else MinkowskiPenetrationDepthSolver()
 
     //default CreationFunctions, filling the m_doubleDispatch table
-    val convexConvexCreateFunc = ConvexConvexAlgorithm.CreateFunc(solver)
-    val convexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm
-    swappedConvexConcaveCreateFunc;
-    compoundCreateFunc;
-    compoundCompoundCreateFunc;
+    val convexConvexCreateFunc = ConvexConvexAlgorithm::CreateFunc
+    val convexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm::CreateFunc
+    val swappedConvexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm::SwappedCreateFunc
+    val compoundCreateFunc = CompoundCollisionAlgorithm::CreateFunc
+    val compoundCompoundCreateFunc = CompoundCompoundCollisionAlgorithm::CreateFunc
 
-    swappedCompoundCreateFunc;
-    emptyCreateFunc;
-    sphereSphereCF;
-    sphereBoxCF;
-    boxSphereCF;
+    val swappedCompoundCreateFunc = CompoundCollisionAlgorithm::SwappedCreateFunc
+    val emptyCreateFunc = EmptyAlgorithm::CreateFunc
+    val sphereSphereCF = SphereSphereCollisionAlgorithm::CreateFunc
 
     boxBoxCF;
     sphereTriangleCF;

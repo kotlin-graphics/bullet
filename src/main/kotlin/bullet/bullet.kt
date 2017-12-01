@@ -1,9 +1,6 @@
 package bullet
 
-import bullet.collision.broadphaseCollision.BroadphasePair
-import bullet.collision.broadphaseCollision.Dbvt
-import bullet.collision.broadphaseCollision.DbvtNode
-import bullet.collision.broadphaseCollision.QuantizedBvhNode
+import bullet.collision.broadphaseCollision.*
 import bullet.dynamics.constraintSolver.SolverConstraint
 import bullet.dynamics.constraintSolver.TypedConstraint
 import bullet.linearMath.Vec3
@@ -103,6 +100,7 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
     when {
         size > newSize -> for (i in newSize until size) pop()
         newSize > size -> when (get(0)) {
+            is Dbvt.StkNN? -> for (i in size until newSize) add(null as T)
             is Dbvt.StkNN -> for (i in size until newSize) add(Dbvt.StkNN() as T)
             is DbvtNode -> for (i in size until newSize) add(DbvtNode() as T)
             is BroadphasePair -> for (i in size until newSize) add(BroadphasePair() as T)
@@ -111,6 +109,7 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
             is Int -> for (i in size until newSize) add(0 as T)
             is Vec3 -> for (i in size until newSize) add(Vec3() as T)
             is QuantizedBvhNode -> for (i in size until newSize) add(QuantizedBvhNode() as T)
+            is CollisionAlgorithm? -> for (i in size until newSize) add(null as T)
         }
     }
 }
@@ -127,6 +126,7 @@ val TEST_INTERNAL_OBJECTS = true
 val ONLY_REPORT_DEEPEST_POINT = false
 val ZERO_MARGIN = false
 val DEBUG_CONTACTS = false
+val CLEAR_MANIFOLD = true
 
 
 /** internal debugging variable. this value shouldn't be too high */

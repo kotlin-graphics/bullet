@@ -20,8 +20,6 @@ import bullet.collision.collisionDispatch.CollisionObjectWrapper
 import bullet.collision.collisionDispatch.ManifoldResult
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 
-typealias ManifoldArray = Array<PersistentManifold>
-
 class CollisionAlgorithmConstructionInfo(var dispatcher: Dispatcher? = null, var manifold: PersistentManifold? = null)
 
 /** CollisionAlgorithm is an collision interface that is compatible with the Broadphase and Dispatcher.
@@ -41,5 +39,5 @@ abstract class CollisionAlgorithm {
     open fun calculateTimeOfImpact(body0: CollisionObject, body1: CollisionObject, dispatchInfo: DispatcherInfo,
                                        resultOut: ManifoldResult) = 0f
 
-    open fun getAllContactManifolds(manifoldArray: ManifoldArray) = Unit
+    open fun getAllContactManifolds(manifoldArray: ArrayList<PersistentManifold>) = Unit
 }

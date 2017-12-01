@@ -72,5 +72,5 @@ interface Dispatcher {
 
     fun allocateCollisionAlgorithm(size: Int): Any?
 
-    fun freeCollisionAlgorithm(ptr: Any?)
+    fun freeCollisionAlgorithm(ptr: Any?) // TODO useless, remove
 }

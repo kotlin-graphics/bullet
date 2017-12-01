@@ -19,8 +19,15 @@ import bullet.collision.broadphaseCollision.CollisionAlgorithmConstructionInfo
 import bullet.collision.broadphaseCollision.Dispatcher
 import bullet.collision.broadphaseCollision.DispatcherInfo
 import bullet.collision.broadphaseCollision.DispatcherQueryType
+import bullet.collision.collisionShapes.ConcaveShape
+import bullet.collision.collisionShapes.SphereShape
 import bullet.collision.collisionShapes.TriangleCallback
 import bullet.collision.collisionShapes.TriangleShape
+import bullet.collision.narrowPhaseCollision.ConvexCast
+import bullet.collision.narrowPhaseCollision.PersistentManifold
+import bullet.collision.narrowPhaseCollision.SubsimplexConvexCast
+import bullet.collision.narrowPhaseCollision.VoronoiSimplexSolver
+import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 import bullet.linearMath.testTriangleAgainstAabb2
 
@@ -41,7 +48,7 @@ class ConvexTriangleCallback(val dispatcher: Dispatcher, body0Wrap: CollisionObj
 
     var triangleCount = 0
     // create the manifold from the dispatcher 'manifold pool'
-    val manifoldPtr = dispatcher.getNewManifold(convexBodyWrap!!.collisionObject!!, triBodyWrap!!.collisionObject!!)
+    val manifold = dispatcher.getNewManifold(convexBodyWrap!!.collisionObject!!, triBodyWrap!!.collisionObject!!)
 
     fun setTimeStepAndCounters(collisionMarginTriangle: Float, dispatchInfo: DispatcherInfo, convexBodyWrap: CollisionObjectWrapper,
                                triBodyWrap: CollisionObjectWrapper, resultOut: ManifoldResult) {
@@ -95,14 +102,14 @@ class ConvexTriangleCallback(val dispatcher: Dispatcher, body0Wrap: CollisionObj
 
         if (convexBodyWrap!!.collisionShape.isConvex) {
 
-            val tm = TriangleShape(triangle[0], triangle[1], triangle[2]).apply { margin = collisionMarginTriangle }
+            val tm = TriangleShape(triangle).apply { margin = collisionMarginTriangle }
 
             val triObWrap = CollisionObjectWrapper(triBodyWrap, tm, triBodyWrap!!.collisionObject!!, triBodyWrap!!.worldTransform,
                     partId, triangleIndex) //correct transform?
             val colAlgo = if (resultOut.closestPointDistanceThreshold > 0)
                 ci.dispatcher!!.findAlgorithm(convexBodyWrap!!, triObWrap, null, DispatcherQueryType.CLOSEST_POINT_ALGORITHMS)
             else
-                ci.dispatcher!!.findAlgorithm(convexBodyWrap!!, triObWrap, manifoldPtr, DispatcherQueryType.CONTACT_POINT_ALGORITHMS)
+                ci.dispatcher!!.findAlgorithm(convexBodyWrap!!, triObWrap, manifold, DispatcherQueryType.CONTACT_POINT_ALGORITHMS)
 
             val tmpWrap: CollisionObjectWrapper?
             if (resultOut.body0Internal === triBodyWrap!!.collisionObject) {
@@ -126,7 +133,7 @@ class ConvexTriangleCallback(val dispatcher: Dispatcher, body0Wrap: CollisionObj
         }
     }
 
-    fun clearCache() = dispatcher.clearManifold(manifoldPtr)
+    fun clearCache() = dispatcher.clearManifold(manifold)
 }
 
 /** ConvexConcaveCollisionAlgorithm  supports collision between convex shapes and (concave) trianges meshes. */
@@ -136,41 +143,113 @@ class ConvexConcaveCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo, bo
 
     val convexTriangleCallback = ConvexTriangleCallback(ci.dispatcher!!, body0Wrap, body1Wrap, isSwapped)
 
+    override fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo, resultOut: ManifoldResult) {
+//        BT_PROFILE("btConvexConcaveCollisionAlgorithm::processCollision");
 
-    public :
+        val convexBodyWrap = if (isSwapped) body1Wrap else body0Wrap
+        val triBodyWrap = if (isSwapped) body0Wrap else body1Wrap
 
-    BT_DECLARE_ALIGNED_ALLOCATOR()
+        if (triBodyWrap.collisionShape.isConcave) {
+            val concaveShape = triBodyWrap.collisionShape as ConcaveShape
 
-    btConvexConcaveCollisionAlgorithm()
+            if (convexBodyWrap.collisionShape.isConvex) {
+                val collisionMarginTriangle = concaveShape.margin
 
-    virtual ~btConvexConcaveCollisionAlgorithm()
+                resultOut.manifold = convexTriangleCallback.manifold
+                convexTriangleCallback.setTimeStepAndCounters(collisionMarginTriangle, dispatchInfo, convexBodyWrap, triBodyWrap, resultOut)
 
-    virtual void processCollision(const btCollisionObjectWrapper * body0Wrap, const btCollisionObjectWrapper * body1Wrap, const btDispatcherInfo & dispatchInfo, btManifoldResult * resultOut)
+                convexTriangleCallback.manifold.setBodies(convexBodyWrap.collisionObject!!, triBodyWrap.collisionObject!!)
 
-    btScalar calculateTimeOfImpact (btCollisionObject * body0, btCollisionObject* body1, const btDispatcherInfo& dispatchInfo, btManifoldResult* resultOut)
+                concaveShape.processAllTriangles(convexTriangleCallback, convexTriangleCallback.aabbMin, convexTriangleCallback.aabbMax)
 
-    virtual void getAllContactManifolds(btManifoldArray& manifoldArray)
+                resultOut.refreshContactPoints()
 
-    void clearCache ()
-
-    struct CreateFunc : public btCollisionAlgorithmCreateFunc
-    {
-        virtual btCollisionAlgorithm * CreateCollisionAlgorithm (btCollisionAlgorithmConstructionInfo& ci, const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
-        {
-            void * mem = ci.m_dispatcher1->allocateCollisionAlgorithm(sizeof(btConvexConcaveCollisionAlgorithm))
-            return new(mem) btConvexConcaveCollisionAlgorithm (ci, body0Wrap, body1Wrap, false)
+                convexTriangleCallback.clearWrapperData()
+            }
         }
     }
 
-    struct SwappedCreateFunc : public btCollisionAlgorithmCreateFunc
-    {
-        virtual btCollisionAlgorithm * CreateCollisionAlgorithm (btCollisionAlgorithmConstructionInfo& ci, const btCollisionObjectWrapper* body0Wrap, const btCollisionObjectWrapper* body1Wrap)
-        {
-            void * mem = ci.m_dispatcher1->allocateCollisionAlgorithm(sizeof(btConvexConcaveCollisionAlgorithm))
-            return new(mem) btConvexConcaveCollisionAlgorithm (ci, body0Wrap, body1Wrap, true)
+    override fun calculateTimeOfImpact(body0: CollisionObject, body1: CollisionObject, dispatchInfo: DispatcherInfo, resultOut: ManifoldResult): Float {
+
+        val convexbody = if (isSwapped) body1 else body0
+        val triBody = if (isSwapped) body0 else body1
+
+        //quick approximation using raycast, todo: hook up to the continuous collision detection (one of the btConvexCast)
+
+        /*  only perform CCD above a certain threshold, this prevents blocking on the long run
+            because object in a blocked ccd state (hitfraction<1) get their linear velocity halved each frame...         */
+        val squareMot0 = (convexbody.getInterpolationWorldTransform().origin - convexbody.getWorldTransform().origin).length2()
+        if (squareMot0 < convexbody.ccdSquareMotionThreshold) return 1f
+
+        //const btVector3& from = convexbody->m_worldTransform.getOrigin();
+        //btVector3 to = convexbody->m_interpolationWorldTransform.getOrigin();
+        //todo: only do if the motion exceeds the 'radius'
+
+        val triInv = triBody.getWorldTransform().inverse()
+        val convexFromLocal = triInv * convexbody.getWorldTransform()
+        val convexToLocal = triInv * convexbody.getInterpolationWorldTransform()
+
+        class LocalTriangleSphereCastCallback(val ccdSphereFromTrans: Transform, val ccdSphereToTrans: Transform,
+                                              val ccdSphereRadius: Float, var hitFraction: Float) : TriangleCallback {
+
+            override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
+//                BT_PROFILE("processTriangle")
+
+                //do a swept sphere for now
+                val ident = Transform().apply { setIdentity() }
+                val castResult = ConvexCast.CastResult().apply { fraction = hitFraction }
+                val pointShape = SphereShape(ccdSphereRadius)
+                val triShape = TriangleShape(triangle)
+                val simplexSolver = VoronoiSimplexSolver()
+                val convexCaster = SubsimplexConvexCast(pointShape, triShape, simplexSolver)
+                //GjkConvexCast	convexCaster(&pointShape,convexShape,&simplexSolver);
+                //ContinuousConvexCollision convexCaster(&pointShape,convexShape,&simplexSolver,0);
+                //local space?
+
+                if (convexCaster.calcTimeOfImpact(ccdSphereFromTrans, ccdSphereToTrans, ident, ident, castResult))
+                    if (hitFraction > castResult.fraction) hitFraction = castResult.fraction
+            }
         }
+
+        if (triBody.collisionShape!!.isConcave) {
+            val rayAabbMin = convexFromLocal.origin min convexToLocal.origin
+            val rayAabbMax = convexFromLocal.origin max convexToLocal.origin
+            val ccdRadius0 = convexbody.ccdSweptSphereRadius
+            rayAabbMin -= Vec3(ccdRadius0)
+            rayAabbMax += Vec3(ccdRadius0)
+
+            val curHitFraction = 1f //is this available?
+            val raycastCallback = LocalTriangleSphereCastCallback(convexFromLocal, convexToLocal, convexbody.ccdSweptSphereRadius, curHitFraction)
+                    .apply { hitFraction = convexbody.hitFraction }
+
+            // triBody = concavebody
+            (triBody.collisionShape as? ConcaveShape)?.processAllTriangles(raycastCallback, rayAabbMin, rayAabbMax)
+
+            if (raycastCallback.hitFraction < convexbody.hitFraction) {
+                convexbody.hitFraction = raycastCallback.hitFraction
+                return raycastCallback.hitFraction
+            }
+        }
+        return 1f
     }
 
+    override fun getAllContactManifolds(manifoldArray: ArrayList<PersistentManifold>) {
+        manifoldArray.add(convexTriangleCallback.manifold) // TODO cpp has nullability check on manifold
+    }
+
+    fun clearCache() {
+        convexTriangleCallback.clearCache()
+    }
+
+    class CreateFunc : CollisionAlgorithmCreateFunc() {
+        override fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper,
+                                              body1Wrap: CollisionObjectWrapper) =
+                ConvexConcaveCollisionAlgorithm(info, body0Wrap, body1Wrap, false)
+    }
+
+    class SwappedCreateFunc : CollisionAlgorithmCreateFunc() {
+        override fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper,
+                                              body1Wrap: CollisionObjectWrapper) =
+                ConvexConcaveCollisionAlgorithm(info, body0Wrap, body1Wrap, true)
+    }
 }
-
-#endif //BT_CONVEX_CONCAVE_COLLISION_ALGORITHM_H

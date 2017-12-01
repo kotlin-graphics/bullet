@@ -447,10 +447,10 @@ fun listCount(root: DbvtProxy?): Int {
 class DbvtTreeCollider(p: DbvtBroadphase) : Dbvt.Collide {
     var pbp = p
     var proxy: DbvtProxy? = null
-    override fun process(a: DbvtNode, b: DbvtNode) {
-        if (a !== b) {
-            val pa = a.data as DbvtProxy
-            val pb = b.data as DbvtProxy
+    override fun process(leaf0: DbvtNode, leaf1: DbvtNode) {
+        if (leaf0 !== leaf1) {
+            val pa = leaf0.data as DbvtProxy
+            val pb = leaf1.data as DbvtProxy
             pbp.pairCache.addOverlappingPair(pa, pb)
             ++pbp.newPairs
         }

@@ -17,8 +17,6 @@ subject to the following restrictions:
 package bullet.collision.broadphaseCollision
 
 import bullet.*
-import bullet.dynamics.constraintSolver.SolverConstraint
-import bullet.dynamics.constraintSolver.TypedConstraint
 import bullet.linearMath.LARGE_FLOAT
 import bullet.linearMath.Vec3
 import bullet.linearMath.rayAabb
@@ -188,8 +186,8 @@ class Dbvt {
     // Policies/Interfaces
 
     interface Collide {
-        fun process(a: DbvtNode, b: DbvtNode) = Unit
-        infix fun process(node: DbvtNode) = Unit // TODO consider renaming node -> leaf
+        fun process(leaf0: DbvtNode, leaf1: DbvtNode) = Unit
+        infix fun process(node: DbvtNode) = Unit
         fun process(n: DbvtNode, s: Float) = process(n)
         infix fun descent(node: DbvtNode) = true
         infix fun allLeaves(node: DbvtNode?) = true
@@ -532,6 +530,24 @@ class Dbvt {
 //    btDbvt(const btDbvt&)
 //    {}
 
+    fun collideTVNoStackAlloc(root: DbvtNode?, volume: DbvtVolume, stack: ArrayList<DbvtNode>, policy: Collide) {
+
+        if (root != null) {
+            stack.clear()
+            stack resize SIMPLE_STACKSIZE
+            stack.add(root)
+            do {
+                val n = stack.last()
+                stack.pop()
+                if (n.volume intersect volume)
+                    if (n.isInternal) {
+                        stack.add(n.childs[0]!!)
+                        stack.add(n.childs[1]!!)
+                    } else  policy.process(n)
+            } while (stack.isNotEmpty())
+        }
+    }
+
     // Constants
     companion object {
         val SIMPLE_STACKSIZE = 64
@@ -551,12 +567,6 @@ class Dbvt {
             } else
                 leaves.add(node)
         }
-        //
-//    DBVT_PREFIX
-//    void        collideTVNoStackAlloc(    const btDbvtNode* root,
-//    const btDbvtVolume& volume,
-//    btNodeStack& stack,
-//    DBVT_IPOLICY) const
 
         var tMin = 1f
         var param = 1f

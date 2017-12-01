@@ -100,7 +100,7 @@ open class TriangleConvexcastCallback(val convexShape: ConvexShape, val convexSh
 
     override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
 
-        val triangleShape = TriangleShape(triangle[0], triangle[1], triangle[2])
+        val triangleShape = TriangleShape(triangle)
         triangleShape.margin = triangleCollisionMargin
 
         val simplexSolver = VoronoiSimplexSolver()

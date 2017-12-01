@@ -118,6 +118,12 @@ open class Vec3 {
         z -= v.z
     }
 
+    infix operator fun minusAssign(f: Float) {
+        x -= f
+        y -= f
+        z -= f
+    }
+
     infix operator fun timesAssign(v: Vec3) {
         x *= v.x
         y *= v.y

@@ -52,6 +52,7 @@ class TriangleShape : PolyhedralConvexShape {
         shapeType = BNT.TRIANGLE_SHAPE_PROXYTYPE
     }
 
+    constructor(ps: Array<Vec3>) : this(ps[0], ps[1], ps[2])
     constructor(p0: Vec3, p1: Vec3, p2: Vec3) : super() {
         shapeType = BNT.TRIANGLE_SHAPE_PROXYTYPE
         vertices1[0] put p0
