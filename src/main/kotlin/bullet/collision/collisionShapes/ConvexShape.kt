@@ -25,7 +25,7 @@ abstract class ConvexShape : CollisionShape() {
         TRIANGLE_SHAPE_PROXYTYPE -> {
             val triangleShape = this as TriangleShape
             val dir = Vec3(localDir)
-            val vertices = triangleShape.vertices1
+            val vertices = triangleShape.vertices
             val dots = dir.dot3(vertices[0], vertices[1], vertices[2])
             val sup = vertices[dots.maxAxis()]
             Vec3(sup.x, sup.y, sup.z)

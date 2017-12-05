@@ -15,11 +15,8 @@ subject to the following restrictions:
 
 package bullet.dynamics.constraintSolver
 
-import bullet.BYTES
+import bullet.*
 import bullet.dynamics.constraintSolver.SolverMode as Sm
-import bullet.EPSILON
-import bullet.L
-import bullet.collision.broadphaseCollision.resize
 import bullet.collision.collisionDispatch.CollisionObject
 import bullet.collision.narrowPhaseCollision.*
 import bullet.dynamics.dynamics.RigidBody
@@ -27,7 +24,6 @@ import bullet.dynamics.dynamics.has
 import bullet.dynamics.dynamics.RigidBodyFlags as Rbf
 import bullet.collision.collisionDispatch.CollisionObject.AnisotropicFrictionFlags as Aff
 import bullet.collision.narrowPhaseCollision.ContactPointFlags as Cpf
-import bullet.has
 import bullet.linearMath.DebugDraw
 import bullet.linearMath.Vec3
 import bullet.linearMath.planeSpace1

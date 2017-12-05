@@ -16,8 +16,7 @@ subject to the following restrictions:
 package bullet.dynamics.dynamics
 
 //import bullet.collision.broadphaseCollision.BroadphaseProxy.CollisionFilterGroups as Cfg
-import bullet.BT_NO_PROFILE
-import bullet.USE_STATIC_ONLY
+import bullet.*
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.collisionDispatch.*
 import bullet.collision.collisionShapes.SphereShape
@@ -26,8 +25,6 @@ import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.dynamics.constraintSolver.ConstraintSolver
 import bullet.dynamics.constraintSolver.ContactSolverInfo
 import bullet.dynamics.constraintSolver.TypedConstraint
-import bullet.gNumClampedCcdMotions
-import bullet.i
 import bullet.linearMath.*
 import bullet.collision.broadphaseCollision.BroadphaseProxy.CollisionFilterGroups as Cfg
 
@@ -221,7 +218,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
 
     fun solveConstraints(solverInfo: ContactSolverInfo) {
 //        BT_PROFILE("solveConstraints");
-        sortedConstraints.resize(constraints.size)
+        sortedConstraints resize constraints.size
         for (i in 0 until numConstraints)
             sortedConstraints[i] = constraints[i]
 //	btAssert(0);
@@ -478,7 +475,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
             val timeStep = if (latencyMotionStateInterpolation && fixedTimeStep != 0f) localTime - fixedTimeStep else localTime * body.hitFraction
             TransformUtil.integrateTransform(body.getInterpolationWorldTransform(), body.getInterpolationLinearVelocity(),
                     body.getInterpolationAngularVelocity(), timeStep, interpolatedTransform)
-            body.motionState!!.worldTransform = interpolatedTransform
+            body.motionState!!.setWorldTransform(interpolatedTransform)
         }
     }
 

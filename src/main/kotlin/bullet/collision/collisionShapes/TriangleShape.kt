@@ -21,13 +21,13 @@ import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 
 class TriangleShape : PolyhedralConvexShape {
 
-    val vertices1 = Array(3, { Vec3() })
+    val vertices = Array(3, { Vec3() })
 
     override val numVertices get() = 3
 
-    fun getVertexPtr(index: Int) = vertices1[index]
+    fun getVertexPtr(index: Int) = vertices[index]
 
-    override fun getVertex(i: Int, vtx: Vec3) = vtx put vertices1[i]
+    override fun getVertex(i: Int, vtx: Vec3) = vtx put vertices[i]
 
     override val numEdges get() = 3
 
@@ -38,13 +38,13 @@ class TriangleShape : PolyhedralConvexShape {
 
     override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) = getAabbSlow(trans, aabbMin, aabbMax)
 
-    override fun localGetSupportingVertexWithoutMargin(vec: Vec3) = vertices1[(vec dot3 vertices1).maxAxis()]
+    override fun localGetSupportingVertexWithoutMargin(vec: Vec3) = vertices[(vec dot3 vertices).maxAxis()]
 
     override fun batchedUnitVectorGetSupportingVertexWithoutMargin(vectors: Array<Vec3>, supportVerticesOut: Array<Vec3>, numVectors: Int) {
         for (i in 0 until numVectors) {
             val dir = vectors[i]
-            val dots = dir dot3 vertices1
-            supportVerticesOut[i] = vertices1[dots.maxAxis()]
+            val dots = dir dot3 vertices
+            supportVerticesOut[i] = vertices[dots.maxAxis()]
         }
     }
 
@@ -55,9 +55,9 @@ class TriangleShape : PolyhedralConvexShape {
     constructor(ps: Array<Vec3>) : this(ps[0], ps[1], ps[2])
     constructor(p0: Vec3, p1: Vec3, p2: Vec3) : super() {
         shapeType = BNT.TRIANGLE_SHAPE_PROXYTYPE
-        vertices1[0] put p0
-        vertices1[1] put p1
-        vertices1[2] put p2
+        vertices[0] put p0
+        vertices[1] put p1
+        vertices[2] put p2
     }
 
     override fun getPlane(planeNormal: Vec3, planeSupport: Vec3, i: Int) = getPlaneEquation(i, planeNormal, planeSupport)
@@ -65,13 +65,13 @@ class TriangleShape : PolyhedralConvexShape {
     override val numPlanes get() = 1
 
     fun calcNormal(normal: Vec3 = Vec3()): Vec3 {
-        normal put ((vertices1[1] - vertices1[0]) cross (vertices1[2] - vertices1[0]))
+        normal put ((vertices[1] - vertices[0]) cross (vertices[2] - vertices[0]))
         return normal.normalize()
     }
 
     fun getPlaneEquation(i: Int, planeNormal: Vec3, planeSupport: Vec3) {
         calcNormal(planeNormal)
-        planeSupport put vertices1[0]
+        planeSupport put vertices[0]
     }
 
     override fun calculateLocalInertia(mass: Float, inertia: Vec3) {
@@ -84,7 +84,7 @@ class TriangleShape : PolyhedralConvexShape {
         val normal = calcNormal()
         //distance to plane
         var dist = pt dot normal
-        val planeConst = vertices1[0] dot normal
+        val planeConst = vertices[0] dot normal
         dist -= planeConst
         if (dist in -tolerance..tolerance) {
             //inside check on edge-planes

@@ -127,6 +127,8 @@ val ONLY_REPORT_DEEPEST_POINT = false
 val ZERO_MARGIN = false
 val DEBUG_CONTACTS = false
 val CLEAR_MANIFOLD = true
+val USE_PERSISTENT_CONTACTS = true
+val USE_CENTER_POINT = false
 
 
 /** internal debugging variable. this value shouldn't be too high */

@@ -21,6 +21,7 @@ import bullet.collision.broadphaseCollision.*
 import bullet.i
 import bullet.linearMath.LARGE_FLOAT
 import bullet.linearMath.Vec3
+import bullet.resize
 
 /** The OptimizedBvh extends the QuantizedBvh to create AABB tree for triangle meshes, through the StridingMeshInterface. */
 class OptimizedBvh : QuantizedBvh() {
@@ -123,7 +124,7 @@ class OptimizedBvh : QuantizedBvh() {
             triangles.internalProcessAllTriangles(callback, bvhAabbMin, bvhAabbMax)
             //now we have an array of leafnodes in m_leafNodes
             numLeafNodes = quantizedLeafNodes.size
-            quantizedContiguousNodes.resize(2 * numLeafNodes)
+            quantizedContiguousNodes resize (2 * numLeafNodes)
         } else {
             val callback = NodeTriangleCallback(leafNodes)
             val aabbMin = Vec3(-LARGE_FLOAT)
@@ -131,7 +132,7 @@ class OptimizedBvh : QuantizedBvh() {
             triangles.internalProcessAllTriangles(callback, aabbMin, aabbMax)
             //now we have an array of leafnodes in m_leafNodes
             numLeafNodes = leafNodes.size
-            contiguousNodes.resize(2 * numLeafNodes)
+            contiguousNodes resize (2 * numLeafNodes)
         }
         curNodeIndex = 0
         buildTree(0, numLeafNodes)

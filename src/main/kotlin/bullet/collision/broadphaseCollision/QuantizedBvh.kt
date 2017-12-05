@@ -20,6 +20,7 @@ package bullet.collision.broadphaseCollision
 import bullet.f
 import bullet.i
 import bullet.linearMath.*
+import bullet.resize
 import bullet.s
 import kotlin.experimental.and
 import kotlin.experimental.or
@@ -714,7 +715,7 @@ open class QuantizedBvh {
 
         if (useQuantization) {
             numLeafNodes = quantizedLeafNodes.size //now we have an array of leafnodes in leafNodes
-            quantizedContiguousNodes.resize(2 * numLeafNodes)
+            quantizedContiguousNodes resize (2 * numLeafNodes)
         }
 
         curNodeIndex = 0

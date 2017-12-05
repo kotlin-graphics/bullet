@@ -17,6 +17,7 @@ package bullet.collision.broadphaseCollision
 
 import bullet.f
 import bullet.linearMath.Vec3
+import bullet.resize
 import kotlin.math.max
 import kotlin.math.min
 
@@ -373,7 +374,7 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
         }
         //perform a sort, to sort 'invalid' pairs to the end
         overlappingPairArray.sortWith(BroadphasePairSortPredicate)
-        overlappingPairArray.resize(overlappingPairArray.size - invalidPair)
+        overlappingPairArray resize (overlappingPairArray.size - invalidPair)
     }
 
     /** This setAabbForceUpdate is similar to setAabb but always forces the aabb update.

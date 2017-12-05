@@ -16,7 +16,6 @@ subject to the following restrictions:
 package bullet.collision.collisionDispatch
 
 import bullet.*
-import bullet.collision.broadphaseCollision.CollisionAlgorithm
 import bullet.collision.broadphaseCollision.CollisionAlgorithmConstructionInfo
 import bullet.collision.broadphaseCollision.DispatcherInfo
 import bullet.collision.collisionShapes.*
@@ -241,8 +240,8 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
                     if (polyhedronA.polyhedron != null && polyhedronB.shapeType == Bnt.TRIANGLE_SHAPE_PROXYTYPE) {
 
                         val tri = polyhedronB as TriangleShape
-                        val vertices = arrayListOf(body1.worldTransform * tri.vertices1[0],
-                                body1.worldTransform * tri.vertices1[1], body1.worldTransform * tri.vertices1[2])
+                        val vertices = arrayListOf(body1.worldTransform * tri.vertices[0],
+                                body1.worldTransform * tri.vertices[1], body1.worldTransform * tri.vertices[2])
 
                         //tri->initializePolyhedralFeatures();
 
@@ -416,7 +415,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
         return resultFraction
     }
 
-    fun getAllContactManifolds(manifoldArray: ArrayList<PersistentManifold>) {
+    override fun getAllContactManifolds(manifoldArray: ArrayList<PersistentManifold>) {
         // should we use m_ownManifold to avoid adding duplicates?
         manifold?.let { if (ownManifold) manifoldArray.add(it) }
     }

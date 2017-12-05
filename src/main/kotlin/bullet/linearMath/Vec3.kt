@@ -16,6 +16,7 @@ open class Vec3 {
     constructor(float: Float) : this(float, float, float)
     constructor(floats: FloatArray, pos: Int = 0) : this(floats[pos], floats[pos + 1], floats[pos + 2])
     constructor(v: Vec3) : this(v.x, v.y, v.z)
+    constructor(block: (Int) -> Float) : this(block(0), block(1), block(2))
     constructor(x: Number, y: Number, z: Number) : this(x.f, y.f, z.f)
     constructor(x: Float, y: Float, z: Float) {
         this.x = x

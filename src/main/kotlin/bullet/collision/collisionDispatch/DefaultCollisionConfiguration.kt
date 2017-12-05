@@ -55,11 +55,11 @@ class DefaultCollisionConfiguration(
     val emptyCreateFunc = EmptyAlgorithm::CreateFunc
     val sphereSphereCF = SphereSphereCollisionAlgorithm::CreateFunc
 
-    boxBoxCF;
-    sphereTriangleCF;
-    triangleSphereCF;
-    planeConvexCF;
-    convexPlaneCF;
+    val boxBoxCF = BoxBoxCollisionAlgorithm::CreateFunc
+    val sphereTriangleCF = SphereTriangleCollisionAlgorithm::CreateFunc
+    val triangleSphereCF = SphereTriangleCollisionAlgorithm::CreateFunc
+    val planeConvexCF = ConvexPlaneCollisionAlgorithm::CreateFunc
+    val convexPlaneCF = ConvexPlaneCollisionAlgorithm::CreateFunc
 
     override fun getCollisionAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
