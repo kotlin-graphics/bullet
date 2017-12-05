@@ -62,7 +62,7 @@ class DefaultCollisionConfiguration(
     val convexPlaneCF = ConvexPlaneCollisionAlgorithm::CreateFunc
 
     override fun getCollisionAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getClosestPointsAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
