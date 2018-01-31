@@ -85,7 +85,7 @@ class BoxShape(boxHalfExtents: Vec3) : PolyhedralConvexShape() {
         }
 
     override fun getAabb(trans: Transform, aabbMin: Vec3, aabbMax: Vec3) =
-            transformAabb(getHalfExtentsWithoutMargin(), collisionMargin, trans, aabbMin, aabbMax)
+            transformAabb(getHalfExtentsWithoutMargin(), margin, trans, aabbMin, aabbMax)
 
     override fun calculateLocalInertia(mass: Float, inertia: Vec3) {
         //btScalar margin = btScalar(0.);
