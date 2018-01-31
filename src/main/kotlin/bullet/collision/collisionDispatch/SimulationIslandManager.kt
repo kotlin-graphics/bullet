@@ -15,6 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.BT_PROFILE
 import bullet.collision.broadphaseCollision.Dispatcher
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 
@@ -119,7 +120,7 @@ class SimulationIslandManager {
         var endIslandIndex = 1
         var startIslandIndex = 0
         val numElem = unionFind.numElements
-//        BT_PROFILE("processIslands");
+        BT_PROFILE("processIslands")
         if (!splitIslands) {
             val manifold = dispatcher.internalManifoldPointer!!
             val maxNumManifolds = dispatcher.numManifolds
@@ -177,7 +178,7 @@ class SimulationIslandManager {
     }
 
     fun buildIslands(dispatcher: Dispatcher, colWorld: CollisionWorld) {
-//        BT_PROFILE("islandUnionFindAndQuickSort");
+        BT_PROFILE("islandUnionFindAndQuickSort")
         val collisionObjects = colWorld.collisionObjects
         islandManifold.clear()
         /*  we are going to sort the unionfind array, and store the element id in the size afterwards, we clean

@@ -917,7 +917,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
                                      constraints: ArrayList<TypedConstraint>, numConstraints: Int, infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw): Float {
 
         fixedBodyId = -1
-//        BT_PROFILE("solveGroupCacheFriendlySetup") TODO
+        BT_PROFILE("solveGroupCacheFriendlySetup")
 
         // if solver mode has changed,
         if (infoGlobal.solverMode != cachedSolverMode) {

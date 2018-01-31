@@ -16,6 +16,7 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.BT_PROFILE
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.collisionShapes.CompoundShape
 import bullet.collision.narrowPhaseCollision.PersistentManifold
@@ -227,7 +228,7 @@ class CompoundCompoundLeafCallback(val compound1ObjWrap: CollisionObjectWrapper,
 
 
     override fun process(leaf0: DbvtNode, leaf1: DbvtNode) {
-//        BT_PROFILE("btCompoundCompoundLeafCallback::Process");
+        BT_PROFILE("CompoundCompoundLeafCallback::Process")
         numOverlapPairs++
 
         val childIndex0 = leaf0.dataAsInt

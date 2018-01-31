@@ -36,11 +36,11 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
             collisionConfiguration: CollisionConfiguration) : DynamicsWorld(dispatcher, pairCache, collisionConfiguration) {
 
     override var constraintSolver = constraintSolver
-    set(value) {
-        ownsConstraintSolver = false
-        field = value
-        solverIslandCallback!!.solver = value
-    }
+        set(value) {
+            ownsConstraintSolver = false
+            field = value
+            solverIslandCallback!!.solver = value
+        }
 
     val sortedConstraints = ArrayList<TypedConstraint>()
     var solverIslandCallback: InplaceSolverIslandCallback? = null
@@ -79,7 +79,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     val predictiveManifoldsMutex = SpinMutex()
 
     fun predictUnconstraintMotion(timeStep: Float) {
-//        BT_PROFILE("predictUnconstraintMotion");
+        BT_PROFILE("predictUnconstraintMotion")
         nonStaticRigidBodies.forEach {
             if (!it.isStaticOrKinematicObject) {
                 // don't integrate/update velocities here, it happens in the constraint solver
@@ -101,7 +101,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
                 val squareMotion = (predictedTrans.origin - body.getWorldTransform().origin).length2()
 
                 if (dispatchInfo.useContinuous && body.ccdSquareMotionThreshold != 0f && body.ccdSquareMotionThreshold < squareMotion) {
-//                    BT_PROFILE("CCD motion clamping")
+                    BT_PROFILE("CCD motion clamping")
                     if (body.collisionShape!!.isConvex) {
                         gNumClampedCcdMotions++
                         if (USE_STATIC_ONLY) {
@@ -161,12 +161,12 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun integrateTransforms(timeStep: Float) {
-//        BT_PROFILE("integrateTransforms");
+        BT_PROFILE("integrateTransforms")
         if (nonStaticRigidBodies.isNotEmpty())
             integrateTransformsInternal(nonStaticRigidBodies, nonStaticRigidBodies.size, timeStep)
         ///this should probably be switched on by default, but it is not well tested yet
         if (applySpeculativeContactRestitution) {
-//            BT_PROFILE("apply speculative contact restitution");
+            BT_PROFILE("apply speculative contact restitution")
             for (i in 0 until predictiveManifolds.size) {
                 val manifold = predictiveManifolds[i]
                 val body0 = RigidBody.upcast(manifold.body0!!)!!
@@ -195,7 +195,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun calculateSimulationIslands() {
-//        BT_PROFILE("calculateSimulationIslands");
+        BT_PROFILE("calculateSimulationIslands")
         islandManager!!.updateActivationState(this, dispatcher!!)
 
         //merge islands based on speculative contact manifolds too
@@ -217,7 +217,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun solveConstraints(solverInfo: ContactSolverInfo) {
-//        BT_PROFILE("solveConstraints");
+        BT_PROFILE("solveConstraints")
         sortedConstraints resize constraints.size
         for (i in 0 until numConstraints)
             sortedConstraints[i] = constraints[i]
@@ -234,7 +234,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun updateActivationState(timeStep: Float) {
-//        BT_PROFILE("updateActivationState");
+        BT_PROFILE("updateActivationState")
         nonStaticRigidBodies.forEach {
             //            if (body) { TODO check nullability
             it.updateDeactivation(timeStep)
@@ -257,7 +257,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun updateActions(timeStep: Float) {
-//        BT_PROFILE("updateActions");
+        BT_PROFILE("updateActions")
         actions.forEach { it.updateAction(this, timeStep) }
     }
 
@@ -268,7 +268,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun internalSingleStepSimulation(timeStep: Float) {
-//        BT_PROFILE("internalSingleStepSimulation");
+        BT_PROFILE("internalSingleStepSimulation")
         internalPreTickCallback?.invoke(this, timeStep)
         // apply gravity, predict motion
         predictUnconstraintMotion(timeStep)
@@ -299,7 +299,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun releasePredictiveContacts() {
-//        BT_PROFILE( "release predictive contact manifolds" );
+        BT_PROFILE( "release predictive contact manifolds" )
         predictiveManifolds.forEach(dispatcher!!::releaseManifold)
         predictiveManifolds.clear()
     }
@@ -315,7 +315,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
                 val squareMotion = (predictedTrans.origin - body.getWorldTransform().origin).length2()
 
                 if (dispatchInfo.useContinuous && body.ccdSquareMotionThreshold != 0f && body.ccdSquareMotionThreshold < squareMotion) {
-//                    BT_PROFILE("predictive convexSweepTest")
+                    BT_PROFILE("predictive convexSweepTest")
                     if (body.collisionShape!!.isConvex) {
                         gNumClampedCcdMotions++
 //                        #ifdef PREDICTIVE_CONTACT_USE_STATIC_ONLY TODO
@@ -381,7 +381,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun createPredictiveContacts(timeStep: Float) {
-//        BT_PROFILE("createPredictiveContacts");
+        BT_PROFILE("createPredictiveContacts")
         releasePredictiveContacts()
         if (nonStaticRigidBodies.isNotEmpty())
             createPredictiveContactsInternal(nonStaticRigidBodies, nonStaticRigidBodies.size, timeStep)
@@ -454,10 +454,10 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     override fun synchronizeMotionStates() {
-        //	BT_PROFILE("synchronizeMotionStates");
+        BT_PROFILE("synchronizeMotionStates")
         if (synchronizeAllMotionStates)
         //iterate  over all collision objects
-            for(it in collisionObjects)
+            for (it in collisionObjects)
                 RigidBody.upcast(it)?.let { synchronizeSingleMotionState(it) }
         //iterate over all active rigid bodies
         else nonStaticRigidBodies.filter { it.isActive }.forEach { synchronizeSingleMotionState(it) }
@@ -505,10 +505,10 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     override fun addRigidBody(body: RigidBody) {
-            val isDynamic = !body.isStaticObject && !body.isKinematicObject
-            val collisionFilterGroup = if (isDynamic) Cfg.DefaultFilter else Cfg.StaticFilter
-            val collisionFilterMask = if (isDynamic) Cfg.AllFilter.i else Cfg.AllFilter xor Cfg.StaticFilter
-            addRigidBody(body, collisionFilterGroup.i, collisionFilterMask)
+        val isDynamic = !body.isStaticObject && !body.isKinematicObject
+        val collisionFilterGroup = if (isDynamic) Cfg.DefaultFilter else Cfg.StaticFilter
+        val collisionFilterMask = if (isDynamic) Cfg.AllFilter.i else Cfg.AllFilter xor Cfg.StaticFilter
+        addRigidBody(body, collisionFilterGroup.i, collisionFilterMask)
     }
 
     override fun addRigidBody(body: RigidBody, group: Int, mask: Int) {
@@ -774,7 +774,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     override fun debugDrawWorld() {
         TODO()
         /*
-        BT_PROFILE("debugDrawWorld");
+        BT_PROFILE("debugDrawWorld")
 
 	btCollisionWorld::debugDrawWorld();
 

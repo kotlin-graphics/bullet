@@ -50,6 +50,7 @@ open class CollisionObject {
 
     fun getWorldTransform() = _worldTransform
 
+
     /** interpolationWorldTransform is used for CCD and interpolation
      *  it can be either previous or future (predicted) transform   */
     protected val _interpolationWorldTransform = Transform().apply { setIdentity() }
@@ -60,6 +61,7 @@ open class CollisionObject {
     }
 
     fun getInterpolationWorldTransform() = _interpolationWorldTransform
+
 
     /** those two are experimental: just added for bullet time effect, so you can still apply impulses (directly modifying
      *  velocities) without destroying the continuous interpolated motion (which uses this interpolation velocities)  */
@@ -72,6 +74,7 @@ open class CollisionObject {
 
     fun getInterpolationLinearVelocity() = _interpolationLinearVelocity
 
+
     protected val _interpolationAngularVelocity = Vec3()
     fun setInterpolationAngularVelocity(angVel: Vec3) {
         updateRevision++
@@ -79,6 +82,7 @@ open class CollisionObject {
     }
 
     fun getInterpolationAngularVelocity() = _interpolationAngularVelocity
+
 
     val anisotropicFriction = Vec3(1f)
     protected var hasAnisotropicFriction = AFF.DISABLED
@@ -114,28 +118,34 @@ open class CollisionObject {
         }
     var deactivationTime = 0f
 
-    var friction = 0.5f
-        set(value) {
-            updateRevision++
-            field = value
-        }
-    var restitution = 0f
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    var _friction = 0.5f
+    fun setFriction(value: Float) {
+        updateRevision++
+        _friction = value
+    }
+
+    var _restitution = 0f
+    fun setRestituition(value: Float) {
+        updateRevision++
+        _restitution = value
+    }
+
     /** torsional friction orthogonal to contact normal (useful to stop spheres rolling forever)    */
-    var rollingFriction = 0f
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    var _rollingFriction = 0f
+
+    fun setRollingFriction(value: Float) {
+        updateRevision++
+        _rollingFriction = value
+    }
+
     /** torsional friction around the contact normal (useful for grasping)  */
-    var spinningFriction = 0f
-        set(value) {
-            updateRevision++
-            field = value
-        }
+    var _spinningFriction = 0f
+
+    fun setSpinningFriction(value: Float) {
+        updateRevision++
+        _spinningFriction = value
+    }
+
     var contactDamping = .1f
         protected set
     var contactStiffness = 1e4f

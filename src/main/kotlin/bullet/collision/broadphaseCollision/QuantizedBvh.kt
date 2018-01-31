@@ -17,11 +17,8 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
-import bullet.f
-import bullet.i
+import bullet.*
 import bullet.linearMath.*
-import bullet.resize
-import bullet.s
 import kotlin.experimental.and
 import kotlin.experimental.or
 
@@ -443,14 +440,13 @@ open class QuantizedBvh {
 //                        printf("functions don't match\n")
 //                    }
                 }
-                if (RAYAABB2)
-                /*  careful with this check: need to check division by zero (above) and fix the unQuantize method
+                rayBoxOverlap = if (RAYAABB2) {
+                    /*  careful with this check: need to check division by zero (above) and fix the unQuantize method
                     thanks Joerg/hiker for the reproduction case!
                     http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=9&t=1858 */
-                //BT_PROFILE("btRayAabb2");
-                    rayBoxOverlap = rayAabb2(raySource, rayDirection, sign, bounds, ::param, 0f, lambdaMax)
-                else
-                    rayBoxOverlap = true//btRayAabb(raySource, rayTarget, bounds[0], bounds[1], param, normal);
+                    BT_PROFILE("RayAabb2")
+                    rayAabb2(raySource, rayDirection, sign, bounds, ::param, 0f, lambdaMax)
+                } else true//btRayAabb(raySource, rayTarget, bounds[0], bounds[1], param, normal);
             }
 
             if (isLeafNode && rayBoxOverlap)
@@ -618,7 +614,7 @@ open class QuantizedBvh {
         subtreeHeaders.forEach {
             //PCK: unsigned instead of bool
             if (testQuantizedAabbAgainstQuantizedAabb(quantizedQueryAabbMin, quantizedQueryAabbMax, it.quantizedAabbMin,
-                    it.quantizedAabbMax))  // overlap
+                            it.quantizedAabbMax))  // overlap
                 walkStacklessQuantizedTree(nodeCallback, quantizedQueryAabbMin, quantizedQueryAabbMax, it.rootNodeIndex,
                         it.rootNodeIndex + it.subtreeSize)
         }

@@ -123,11 +123,11 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         _interpolationAngularVelocity put 0f
 
         // moved to CollisionObject
-        friction = constructionInfo.friction
-        rollingFriction = constructionInfo.rollingFriction
-        spinningFriction = constructionInfo.spinningFriction
+        _friction = constructionInfo.friction
+        _rollingFriction = constructionInfo.rollingFriction
+        _spinningFriction = constructionInfo.spinningFriction
 
-        restitution = constructionInfo.restitution
+        _restitution = constructionInfo.restitution
 
         collisionShape = constructionInfo.collisionShape
     }

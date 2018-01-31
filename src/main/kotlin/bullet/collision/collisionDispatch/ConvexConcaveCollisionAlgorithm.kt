@@ -15,6 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.BT_PROFILE
 import bullet.collision.broadphaseCollision.CollisionAlgorithmConstructionInfo
 import bullet.collision.broadphaseCollision.Dispatcher
 import bullet.collision.broadphaseCollision.DispatcherInfo
@@ -79,7 +80,7 @@ class ConvexTriangleCallback(val dispatcher: Dispatcher, body0Wrap: CollisionObj
     }
 
     override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
-//        BT_PROFILE("btConvexTriangleCallback::processTriangle");
+        BT_PROFILE("ConvexTriangleCallback::processTriangle")
 
         if (!testTriangleAgainstAabb2(triangle, aabbMin, aabbMax)) return
 
@@ -144,7 +145,7 @@ class ConvexConcaveCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo, bo
     val convexTriangleCallback = ConvexTriangleCallback(ci.dispatcher!!, body0Wrap, body1Wrap, isSwapped)
 
     override fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo, resultOut: ManifoldResult) {
-//        BT_PROFILE("btConvexConcaveCollisionAlgorithm::processCollision");
+        BT_PROFILE("ConvexConcaveCollisionAlgorithm::processCollision")
 
         val convexBodyWrap = if (isSwapped) body1Wrap else body0Wrap
         val triBodyWrap = if (isSwapped) body0Wrap else body1Wrap
@@ -193,7 +194,7 @@ class ConvexConcaveCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo, bo
                                               val ccdSphereRadius: Float, var hitFraction: Float) : TriangleCallback {
 
             override fun processTriangle(triangle: Array<Vec3>, partId: Int, triangleIndex: Int) {
-//                BT_PROFILE("processTriangle")
+                BT_PROFILE("processTriangle")
 
                 //do a swept sphere for now
                 val ident = Transform().apply { setIdentity() }

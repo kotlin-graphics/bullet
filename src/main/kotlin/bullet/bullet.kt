@@ -133,3 +133,8 @@ val USE_CENTER_POINT = false
 
 /** internal debugging variable. this value shouldn't be too high */
 var gNumClampedCcdMotions = 0
+
+
+fun BT_PROFILE(text: String){
+    if(DEBUG) println(text)
+}

@@ -645,7 +645,7 @@ open class CollisionWorld
             val colObjWorldTransform = collisionObjectWrap.worldTransform
 
             if (collisionShape.isConvex) {
-                //		BT_PROFILE("rayTestConvex");
+                BT_PROFILE("rayTestConvex")
                 val castResult = ConvexCast.CastResult()
                 castResult.fraction = resultCallback.closestHitFraction
 
@@ -680,7 +680,7 @@ open class CollisionWorld
                 val rayFromLocal = worldTocollisionObject * rayFromTrans.origin
                 val rayToLocal = worldTocollisionObject * rayToTrans.origin
 
-                //			BT_PROFILE("rayTestConcave");
+                BT_PROFILE("rayTestConcave")
                 if (collisionShape.shapeType == Bnt.TRIANGLE_MESH_SHAPE_PROXYTYPE) {
                     // ConvexCast::CastResult
                     class BridgeTriangleRaycastCallback(from: Vec3, to: Vec3, val resultCallback: CollisionWorld.RayResultCallback,
@@ -734,7 +734,7 @@ open class CollisionWorld
                     concaveShape.processAllTriangles(rcb, rayAabbMinLocal, rayAabbMaxLocal)
                 }
             } else {
-                //			BT_PROFILE("rayTestCompound");
+                BT_PROFILE("rayTestCompound")
                 if (collisionShape.isCompound) {
                     class LocalInfoAdder2(val i: Int, val userCallback: RayResultCallback) : RayResultCallback() {
                         init {
@@ -802,7 +802,7 @@ open class CollisionWorld
             val colObjWorldTransform = colObjWrap.worldTransform
 
             if (collisionShape.isConvex) {
-                //BT_PROFILE("convexSweepConvex");
+                BT_PROFILE("convexSweepConvex")
                 val castResult = ConvexCast.CastResult().also { r ->
                     r.allowedPenetration = allowedPenetration
                     r.fraction = resultCallback.closestHitFraction//btScalar(1.);//??
@@ -814,7 +814,7 @@ open class CollisionWorld
                 val convexCaster1 = ContinuousConvexCollision(castShape, convexShape, simplexSolver, gjkEpaPenetrationSolver)
 
                 if (convexCaster1.calcTimeOfImpact(convexFromTrans, convexToTrans, colObjWorldTransform, colObjWorldTransform,
-                        castResult)) {
+                                castResult)) {
                     //add hit
                     if (castResult.normal.length2() > 0.0001f) {
                         if (castResult.fraction < resultCallback.closestHitFraction) {
@@ -828,7 +828,7 @@ open class CollisionWorld
             } else {
                 if (collisionShape.isConcave) {
                     if (collisionShape.shapeType == Bnt.TRIANGLE_MESH_SHAPE_PROXYTYPE) {
-                        //BT_PROFILE("convexSweepbtBvhTriangleMesh");
+                        BT_PROFILE("convexSweepbtBvhTriangleMesh")
                         val triangleMesh = collisionShape as BvhTriangleMeshShape
                         val worldTocollisionObject = colObjWorldTransform.inverse()
                         val convexFromLocal = worldTocollisionObject * convexFromTrans.origin
@@ -874,7 +874,7 @@ open class CollisionWorld
                             val castPtr = convexCaster1 as ConvexCast
 
                             if (castPtr.calcTimeOfImpact(convexFromTrans, convexToTrans, colObjWorldTransform, colObjWorldTransform,
-                                    castResult) &&
+                                            castResult) &&
                                     //add hit
                                     castResult.normal.length2() > 0.0001f && castResult.fraction < resultCallback.closestHitFraction) {
                                 castResult.normal.normalize()
@@ -883,7 +883,7 @@ open class CollisionWorld
                                 resultCallback.addSingleResult(localConvexResult, normalInWorldSpace = true)
                             }
                         } else {
-                            //BT_PROFILE("convexSweepConcave");
+                            BT_PROFILE("convexSweepConcave")
                             val concaveShape = collisionShape as ConcaveShape
                             val worldTocollisionObject = colObjWorldTransform.inverse()
                             val convexFromLocal = worldTocollisionObject * convexFromTrans.origin
@@ -965,7 +965,7 @@ open class CollisionWorld
                                 processChild(index, childTrans, childCollisionShape)
                             }
                         }
-//                        BT_PROFILE("convexSweepCompound")
+                        BT_PROFILE("convexSweepCompound")
                         val compoundShape = collisionShape as CompoundShape
                         val fromLocalAabbMin = Vec3()
                         val fromLocalAabbMax = Vec3()
@@ -1042,10 +1042,10 @@ open class CollisionWorld
     }
 
     fun performDiscreteCollisionDetection() {
-//        BT_PROFILE("performDiscreteCollisionDetection");
+        BT_PROFILE("performDiscreteCollisionDetection")
         updateAabbs()
         computeOverlappingPairs()
-//        BT_PROFILE("dispatchAllCollisionPairs")
+        BT_PROFILE("dispatchAllCollisionPairs")
         dispatcher?.let {
             it.dispatchAllCollisionPairs(broadphasePairCache.overlappingPairCache, dispatchInfo, it)
         }

@@ -198,7 +198,7 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
     }
 
     override fun processAllOverlappingPairs(callback: OverlapCallback, dispatcher: Dispatcher) {
-//        BT_PROFILE("btHashedOverlappingPairCache::processAllOverlappingPairs"); TODO
+        BT_PROFILE("HashedOverlappingPairCache::processAllOverlappingPairs")
         var i = 0
 //	printf("m_overlappingPairArray.size()=%d\n",m_overlappingPairArray.size());
         while (i < overlappingPairArray.size) {

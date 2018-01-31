@@ -157,12 +157,12 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val MAX_FRICTION = 10f
 
         // in the future we can let the user override the methods to combine restitution and friction
-        fun calculateCombinedRestitution(body0: CollisionObject?, body1: CollisionObject?) = body0!!.restitution * body1!!.restitution
+        fun calculateCombinedRestitution(body0: CollisionObject?, body1: CollisionObject?) = body0!!._restitution * body1!!._restitution
 
         /** User can override this material combiner by implementing contactAddedCallback and setting
          *  body0.collisionFlags |= CollisionObject.customMaterialCallback  */
         fun calculateCombinedFriction(body0: CollisionObject, body1: CollisionObject): Float {
-            val friction = body0.friction * body1.friction
+            val friction = body0._friction * body1._friction
             return when {
                 friction < -MAX_FRICTION -> -MAX_FRICTION
                 friction > MAX_FRICTION -> MAX_FRICTION
@@ -171,7 +171,7 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         }
 
         fun calculateCombinedRollingFriction(body0: CollisionObject, body1: CollisionObject): Float {
-            val friction = body0.rollingFriction * body1.friction + body1.rollingFriction * body0.friction
+            val friction = body0._rollingFriction * body1._friction + body1._rollingFriction * body0._friction
             return when {
                 friction < -MAX_FRICTION -> -MAX_FRICTION
                 friction > MAX_FRICTION -> MAX_FRICTION
@@ -180,7 +180,7 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         }
 
         fun calculateCombinedSpinningFriction(body0: CollisionObject, body1: CollisionObject): Float {
-            val friction = body0.spinningFriction * body1.friction + body1.spinningFriction * body0.friction
+            val friction = body0._spinningFriction * body1._friction + body1._spinningFriction * body0._friction
             return when {
                 friction < -MAX_FRICTION -> -MAX_FRICTION
                 friction > MAX_FRICTION -> MAX_FRICTION
