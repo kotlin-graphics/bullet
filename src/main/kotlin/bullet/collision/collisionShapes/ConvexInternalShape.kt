@@ -19,7 +19,7 @@ abstract class ConvexInternalShape : ConvexShape() {
      *  alternatively flush the contact points, see documentation for 'cleanProxyFromPairs' */
     val implicitShapeDimensions = Vec3()
 
-    var collisionMargin = 0f
+    var collisionMargin = CONVEX_DISTANCE_MARGIN
 
     var padding = 0f
 

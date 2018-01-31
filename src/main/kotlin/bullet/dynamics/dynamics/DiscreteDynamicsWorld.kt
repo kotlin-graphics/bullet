@@ -403,6 +403,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     fun stepSimulation(timeStep: Float) = stepSimulation(timeStep, maxSubSteps = 1, fixedTimeStep = 1f / 60f)
 
     override fun stepSimulation(timeStep: Float, maxSubSteps: Int, fixedTimeStep: Float): Int {
+
         startProfiling(timeStep)
 
         var numSimulationSubSteps = 0
