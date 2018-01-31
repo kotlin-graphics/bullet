@@ -15,8 +15,12 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
+import bullet.collision.broadphaseCollision.isCompound
+import bullet.collision.broadphaseCollision.isConcave
+import bullet.collision.broadphaseCollision.isConvex
 import bullet.collision.narrowPhaseCollision.GjkEpaPenetrationDepthSolver
 import bullet.collision.narrowPhaseCollision.MinkowskiPenetrationDepthSolver
+import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as Bnt
 
 class DefaultCollisionConstructionInfo {
     // TODO    btPoolAllocator*	m_persistentManifoldPool;
@@ -45,28 +49,51 @@ class DefaultCollisionConfiguration(
     val solver = if (constructionInfo.useEpaPenetrationAlgorithm) GjkEpaPenetrationDepthSolver() else MinkowskiPenetrationDepthSolver()
 
     //default CreationFunctions, filling the m_doubleDispatch table
-    val convexConvexCreateFunc = ConvexConvexAlgorithm::CreateFunc
-    val convexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm::CreateFunc
-    val swappedConvexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm::SwappedCreateFunc
-    val compoundCreateFunc = CompoundCollisionAlgorithm::CreateFunc
-    val compoundCompoundCreateFunc = CompoundCompoundCollisionAlgorithm::CreateFunc
+    val convexConvexCreateFunc = ConvexConvexAlgorithm.CreateFunc(solver)
+    val convexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm.CreateFunc()
+    val swappedConvexConcaveCreateFunc = ConvexConcaveCollisionAlgorithm.SwappedCreateFunc()
+    val compoundCreateFunc = CompoundCollisionAlgorithm.CreateFunc()
+    val compoundCompoundCreateFunc = CompoundCompoundCollisionAlgorithm.CreateFunc()
 
-    val swappedCompoundCreateFunc = CompoundCollisionAlgorithm::SwappedCreateFunc
-    val emptyCreateFunc = EmptyAlgorithm::CreateFunc
-    val sphereSphereCF = SphereSphereCollisionAlgorithm::CreateFunc
+    val swappedCompoundCreateFunc = CompoundCollisionAlgorithm.SwappedCreateFunc()
+    val emptyCreateFunc = EmptyAlgorithm.CreateFunc()
+    val sphereSphereCF = SphereSphereCollisionAlgorithm.CreateFunc()
 
-    val boxBoxCF = BoxBoxCollisionAlgorithm::CreateFunc
-    val sphereTriangleCF = SphereTriangleCollisionAlgorithm::CreateFunc
-    val triangleSphereCF = SphereTriangleCollisionAlgorithm::CreateFunc
-    val planeConvexCF = ConvexPlaneCollisionAlgorithm::CreateFunc
-    val convexPlaneCF = ConvexPlaneCollisionAlgorithm::CreateFunc
+    val boxBoxCF = BoxBoxCollisionAlgorithm.CreateFunc()
+    val sphereTriangleCF = SphereTriangleCollisionAlgorithm.CreateFunc()
+    val triangleSphereCF = SphereTriangleCollisionAlgorithm.CreateFunc()
+    val planeConvexCF = ConvexPlaneCollisionAlgorithm.CreateFunc()
+    val convexPlaneCF = ConvexPlaneCollisionAlgorithm.CreateFunc()
 
-    override fun getCollisionAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
-        TODO("not implemented")
+    override fun getCollisionAlgorithmCreateFunc(proxyType0: Bnt, proxyType1: Bnt) = when {
+        proxyType0 == Bnt.SPHERE_SHAPE_PROXYTYPE && proxyType1 == Bnt.SPHERE_SHAPE_PROXYTYPE -> sphereSphereCF
+        proxyType0 == Bnt.SPHERE_SHAPE_PROXYTYPE && proxyType1 == Bnt.TRIANGLE_SHAPE_PROXYTYPE -> sphereTriangleCF
+        proxyType0 == Bnt.TRIANGLE_SHAPE_PROXYTYPE && proxyType1 == Bnt.SPHERE_SHAPE_PROXYTYPE -> triangleSphereCF
+        proxyType0 == Bnt.BOX_SHAPE_PROXYTYPE && proxyType1 == Bnt.BOX_SHAPE_PROXYTYPE -> boxBoxCF
+        proxyType0.isConvex && proxyType1 == Bnt.STATIC_PLANE_PROXYTYPE -> convexPlaneCF
+        proxyType1.isConvex && proxyType0 == Bnt.STATIC_PLANE_PROXYTYPE -> planeConvexCF
+        proxyType0.isConvex && proxyType1.isConvex -> convexConvexCreateFunc
+        proxyType0.isConvex && proxyType1.isConcave -> convexConcaveCreateFunc
+        proxyType1.isConvex && proxyType0.isConcave -> swappedConvexConcaveCreateFunc
+        proxyType0.isCompound && proxyType1.isCompound -> compoundCompoundCreateFunc
+        proxyType0.isCompound -> compoundCreateFunc
+        proxyType1.isCompound -> swappedCompoundCreateFunc
+        else -> emptyCreateFunc // failed to find an algorithm
     }
 
-    override fun getClosestPointsAlgorithmCreateFunc(proxyType0: Int, proxyType1: Int): CollisionAlgorithmCreateFunc {
-        TODO()
+    override fun getClosestPointsAlgorithmCreateFunc(proxyType0: Bnt, proxyType1: Bnt) = when {
+        proxyType0 == Bnt.SPHERE_SHAPE_PROXYTYPE && proxyType1 == Bnt.SPHERE_SHAPE_PROXYTYPE -> sphereSphereCF
+        proxyType0 == Bnt.SPHERE_SHAPE_PROXYTYPE && proxyType1 == Bnt.TRIANGLE_SHAPE_PROXYTYPE -> sphereTriangleCF
+        proxyType0 == Bnt.TRIANGLE_SHAPE_PROXYTYPE && proxyType1 == Bnt.SPHERE_SHAPE_PROXYTYPE -> triangleSphereCF
+        proxyType0.isConvex && proxyType1 == Bnt.STATIC_PLANE_PROXYTYPE -> convexPlaneCF
+        proxyType1.isConvex && proxyType0 == Bnt.STATIC_PLANE_PROXYTYPE -> planeConvexCF
+        proxyType0.isConvex && proxyType1.isConvex -> convexConvexCreateFunc
+        proxyType0.isConvex && proxyType1.isConcave -> convexConcaveCreateFunc
+        proxyType1.isConvex && proxyType0.isConcave -> swappedConvexConcaveCreateFunc
+        proxyType0.isCompound && proxyType1.isCompound -> compoundCompoundCreateFunc
+        proxyType0.isCompound -> compoundCreateFunc
+        proxyType1.isCompound -> swappedCompoundCreateFunc
+        else -> emptyCreateFunc // failed to find an algorithm
     }
 
     /** Use this method to allow to generate multiple contact points between at once, between two objects using
@@ -80,10 +107,16 @@ class DefaultCollisionConfiguration(
      *  See Bullet/Demos/CollisionDemo for an example how this feature gathers multiple points.
      *  @todo we could add a per-object setting of those parameters, for level-of-detail collision detection.   */
     fun setConvexConvexMultipointIterations(numPerturbationIterations: Int = 3, minimumPointsPerturbationThreshold: Int = 3) {
-        TODO()
+        convexConvexCreateFunc.numPerturbationIterations = numPerturbationIterations
+        convexConvexCreateFunc.minimumPointsPerturbationThreshold = minimumPointsPerturbationThreshold
     }
 
     fun setPlaneConvexMultipointIterations(numPerturbationIterations: Int = 3, minimumPointsPerturbationThreshold: Int = 3) {
-        TODO()
+
+        convexPlaneCF.numPerturbationIterations = numPerturbationIterations
+        convexPlaneCF.minimumPointsPerturbationThreshold = minimumPointsPerturbationThreshold
+
+        planeConvexCF.numPerturbationIterations = numPerturbationIterations
+        planeConvexCF.minimumPointsPerturbationThreshold = minimumPointsPerturbationThreshold
     }
 }

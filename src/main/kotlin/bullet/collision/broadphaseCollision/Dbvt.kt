@@ -147,7 +147,7 @@ class DbvtAabbMm(val min: Vec3 = Vec3(), val max: Vec3 = Vec3()) {
 typealias DbvtVolume = DbvtAabbMm
 
 class DbvtNode {
-    lateinit var volume: DbvtVolume
+    var volume = DbvtVolume()
     var parent: DbvtNode? = null
 
     //union TODO getter/setters?
@@ -215,7 +215,7 @@ class Dbvt {
 
     // Methods
     fun clear() {
-        root?.let { recurseDeleteNode(this, it) }
+        root?.let(::recurseDeleteNode)
         free = null
         lkhd = -1
         stkStack.clear()
@@ -226,7 +226,7 @@ class Dbvt {
     fun optimizeBottomUp() {
         root?.let {
             val leaves = ArrayList<DbvtNode>()
-            fetchLeaves(this, it, leaves)
+            fetchLeaves(it, leaves)
             bottomUp(this, leaves, leaves.size)
             root = leaves[0]
         }
@@ -235,7 +235,7 @@ class Dbvt {
     fun optimizeTopDown(buTreshold: Int = 128) {
         root?.let {
             val leaves = ArrayList<DbvtNode>()
-            fetchLeaves(this, it, leaves)
+            fetchLeaves(it, leaves)
             root = topDown(this, leaves, leaves.size, buTreshold)
         }
     }
@@ -259,14 +259,14 @@ class Dbvt {
     }
 
     fun insert(volume: DbvtVolume, data: Any?): DbvtNode {
-        val leaf = createNode(this, null, volume, data)
-        insertLeaf(this, root!!, leaf)
+        val leaf = createNode(null, volume, data)
+        insertLeaf(root, leaf)
         ++leaves
         return (leaf)
     }
 
     fun update(leaf: DbvtNode, lookAhead: Int = -1) {
-        var _root = removeLeaf(this, leaf)
+        var _root = removeLeaf(leaf)
         if (_root != null) {
             if (lookAhead >= 0) {
                 var i = 0
@@ -276,11 +276,11 @@ class Dbvt {
                 }
             } else _root = root
         }
-        insertLeaf(this, _root!!, leaf)
+        insertLeaf(_root, leaf)
     }
 
     fun update(leaf: DbvtNode, volume: DbvtVolume) {
-        var _root = removeLeaf(this, leaf)
+        var _root = removeLeaf(leaf)
         if (_root != null) {
             if (lkhd >= 0) {
                 var i = 0
@@ -291,7 +291,7 @@ class Dbvt {
             } else _root = root
         }
         leaf.volume = volume
-        insertLeaf(this, _root!!, leaf)
+        insertLeaf(_root, leaf)
     }
 
     fun update(leaf: DbvtNode, volume: DbvtVolume, velocity: Vec3, margin: Float): Boolean {
@@ -317,8 +317,8 @@ class Dbvt {
     }
 
     infix fun remove(leaf: DbvtNode?) {
-        removeLeaf(this, leaf)
-        deleteNode(this, leaf)
+        removeLeaf(leaf)
+        deleteNode(leaf)
         --leaves
     }
 
@@ -348,7 +348,7 @@ class Dbvt {
             do {
                 val i = stack.lastIndex
                 val e = stack[i]
-                val n = createNode(dest, e.parent, e.node!!.volume, e.node!!.data)
+                val n = dest.createNode(e.parent, e.node!!.volume, e.node!!.data)
                 stack.pop()
                 if (e.parent != null)
                     e.parent!!.childs[i and 1] = n
@@ -543,7 +543,7 @@ class Dbvt {
                     if (n.isInternal) {
                         stack.add(n.childs[0]!!)
                         stack.add(n.childs[1]!!)
-                    } else  policy.process(n)
+                    } else policy.process(n)
             } while (stack.isNotEmpty())
         }
     }
@@ -622,6 +622,106 @@ class Dbvt {
             }
         }
     }
+
+    infix fun deleteNode(node: DbvtNode?) {
+        free = node
+    }
+
+    infix fun recurseDeleteNode(node: DbvtNode) {
+        if (!node.isLeaf) {
+            recurseDeleteNode(node.childs[0]!!)
+            recurseDeleteNode(node.childs[1]!!)
+        }
+        if (node === root) root = null
+        deleteNode(node)
+    }
+
+    fun createNode(parent: DbvtNode?, data: Any?): DbvtNode {
+        val f = free
+        return if (f != null) {
+            free = null
+            f
+        } else
+            DbvtNode().also {
+                it.parent = parent
+                it.data = data
+                it.childs[1] = null
+            }
+    }
+
+    fun createNode(parent: DbvtNode?, volume: DbvtVolume, data: Any?) = createNode(parent, data).also { it.volume = volume }
+    fun createNode(parent: DbvtNode?, volume0: DbvtVolume, volume1: DbvtVolume, data: Any?) =
+            createNode(parent, data).also { volume0.merge(volume1, it.volume) }
+
+    fun insertLeaf(_root: DbvtNode?, leaf: DbvtNode) {
+        if (root == null) {
+            root = leaf
+            leaf.parent = null
+        } else {
+            var _root = _root
+            if (!_root!!.isLeaf) {
+                do {
+                    _root = _root!!.childs[leaf.volume.select(_root.childs[0]!!.volume, _root.childs[1]!!.volume)]!!
+                } while (!_root!!.isLeaf)
+            }
+            var prev = _root.parent
+            var node = createNode(prev, leaf.volume, _root.volume, 0)
+            if (prev != null) {
+                prev.childs[_root.indexOf] = node
+                node.childs[0] = _root;_root.parent = node
+                node.childs[1] = leaf;leaf.parent = node
+                do {
+                    if (!prev!!.volume.contain(node.volume))
+                        prev.childs[0]!!.volume.merge(prev.childs[1]!!.volume, prev.volume)
+                    else break
+                    node = prev
+                    prev = node.parent
+                } while (prev != null)
+            } else {
+                node.childs[0] = _root;_root.parent = node
+                node.childs[1] = leaf;leaf.parent = node
+                root = node
+            }
+        }
+    }
+
+    fun removeLeaf(leaf: DbvtNode?) = when {
+        leaf === root -> {
+            root = null
+            null
+        }
+        else -> {
+            val parent = leaf!!.parent!!
+            var prev = parent.parent
+            val sibling = parent.childs[1 - leaf.indexOf]!!
+            if (prev != null) {
+                prev.childs[parent.indexOf] = sibling
+                sibling.parent = prev
+                deleteNode(parent)
+                while (prev != null) {
+                    val pb = prev.volume
+                    prev.childs[0]!!.volume.merge(prev.childs[1]!!.volume, prev.volume)
+                    if (pb != prev.volume)
+                        prev = prev.parent
+                    else break
+                }
+                prev ?: root
+            } else {
+                root = sibling
+                sibling.parent = null
+                deleteNode(parent)
+                root
+            }
+        }
+    }
+
+    fun fetchLeaves(root: DbvtNode, leaves: ArrayList<DbvtNode>, depth: Int = -1) {
+        if (root.isInternal && depth != 0) {
+            fetchLeaves(root.childs[0]!!, leaves, depth - 1)
+            fetchLeaves(root.childs[1]!!, leaves, depth - 1)
+            deleteNode(root)
+        } else leaves push root
+    }
 }
 
 class DbvtNodeEnumerator : Dbvt.Collide {
@@ -629,108 +729,6 @@ class DbvtNodeEnumerator : Dbvt.Collide {
     override fun process(node: DbvtNode) {
         nodes.add(node)
     }
-}
-
-fun deleteNode(dbvt: Dbvt, node: DbvtNode?) {
-    dbvt.free = node
-}
-
-fun recurseDeleteNode(dbvt: Dbvt, node: DbvtNode) {
-    if (!node.isLeaf) {
-        recurseDeleteNode(dbvt, node.childs[0]!!)
-        recurseDeleteNode(dbvt, node.childs[1]!!)
-    }
-    if (node === dbvt.root) dbvt.root = null
-    deleteNode(dbvt, node)
-}
-
-fun createNode(dbvt: Dbvt, parent: DbvtNode?, data: Any?): DbvtNode {
-    val f = dbvt.free
-    return if (f != null) {
-        dbvt.free = null
-        f
-    } else
-        DbvtNode().also {
-            it.parent = parent
-            it.data = data
-            it.childs[1] = null
-        }
-}
-
-fun createNode(dbvt: Dbvt, parent: DbvtNode?, volume: DbvtVolume, data: Any?) =
-        createNode(dbvt, parent, data).also { it.volume = volume }
-
-fun createNode(dbvt: Dbvt, parent: DbvtNode?, volume0: DbvtVolume, volume1: DbvtVolume, data: Any?) =
-        createNode(dbvt, parent, data).also { volume0.merge(volume1, it.volume) }
-
-fun insertLeaf(dbvt: Dbvt, root: DbvtNode, leaf: DbvtNode) {
-    var root = root
-    if (dbvt.root == null) {
-        dbvt.root = leaf
-        leaf.parent = null
-    } else {
-        if (!root.isLeaf) {
-            do {
-                root = root.childs[leaf.volume.select(root.childs[0]!!.volume, root.childs[1]!!.volume)]!!
-            } while (!root.isLeaf)
-        }
-        var prev = root.parent
-        var node = createNode(dbvt, prev, leaf.volume, root.volume, 0)
-        if (prev != null) {
-            prev.childs[root.indexOf] = node
-            node.childs[0] = root;root.parent = node
-            node.childs[1] = leaf;leaf.parent = node
-            do {
-                if (!prev!!.volume.contain(node.volume))
-                    prev.childs[0]!!.volume.merge(prev.childs[1]!!.volume, prev.volume)
-                else break
-                node = prev
-                prev = node.parent
-            } while (prev != null)
-        } else {
-            node.childs[0] = root;root.parent = node
-            node.childs[1] = leaf;leaf.parent = node
-            dbvt.root = node
-        }
-    }
-}
-
-fun removeLeaf(dbvt: Dbvt, leaf: DbvtNode?) = when {
-    leaf === dbvt.root -> {
-        dbvt.root = null
-        null
-    }
-    else -> {
-        val parent = leaf!!.parent!!
-        var prev = parent.parent
-        val sibling = parent.childs[1 - leaf.indexOf]!!
-        if (prev != null) {
-            prev.childs[parent.indexOf] = sibling
-            sibling.parent = prev
-            deleteNode(dbvt, parent)
-            while (prev != null) {
-                val pb = prev.volume
-                prev.childs[0]!!.volume.merge(prev.childs[1]!!.volume, prev.volume)
-                if (pb != prev.volume)
-                    prev = prev.parent
-                else break
-            }
-            prev ?: dbvt.root
-        } else {
-            dbvt.root = sibling
-            sibling.parent = null
-            deleteNode(dbvt, parent)
-            dbvt.root
-        }
-    }
-}
-
-fun fetchLeaves(dbvt: Dbvt, root: DbvtNode, leaves: ArrayList<DbvtNode>, depth: Int = -1) {
-    if (root.isInternal && depth != 0) {
-        fetchLeaves(dbvt, root.childs[0]!!, leaves, depth - 1)
-        fetchLeaves(dbvt, root.childs[1]!!, leaves, depth - 1)
-        deleteNode(dbvt, root)
-    } else leaves push root
 }
 
 fun leftOfAxis(node: DbvtNode, org: Vec3, axis: Vec3) = (axis dot (node.volume.center - org)) <= 0
@@ -785,7 +783,7 @@ fun bottomUp(dbvt: Dbvt, leaves: ArrayList<DbvtNode>, ptr: Int, count: Int = 0) 
                 }
             }
         val n = arrayOf(leaves[ptr + minIdx[0]], leaves[ptr + minIdx[1]])
-        val p = createNode(dbvt, null, n[0].volume, n[1].volume, 0)
+        val p = dbvt.createNode(null, n[0].volume, n[1].volume, 0)
         p.childs[0] = n[0]
         p.childs[1] = n[1]
         n[0].parent = p
@@ -834,7 +832,7 @@ fun topDown(dbvt: Dbvt, leaves: ArrayList<DbvtNode>, ptr: Int, count: Int, buTre
                 assert(partition != 0 && partition != count)
             } else
                 partition = count / 2 + 1
-            val node = createNode(dbvt, null, vol, 0)
+            val node = dbvt.createNode(null, vol, 0)
             node.childs[0] = topDown(dbvt, leaves, 0, partition, buTreshold)
             node.childs[1] = topDown(dbvt, leaves, partition, count - partition, buTreshold)
             node.childs[0]!!.parent = node

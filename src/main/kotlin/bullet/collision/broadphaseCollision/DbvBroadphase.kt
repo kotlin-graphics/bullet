@@ -61,7 +61,7 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
     }
 
     /** Dbvt sets   */
-    lateinit var sets: Array<Dbvt>
+    val sets = Array(2){ Dbvt() }
     /** Stages list */
     val stageRoots = Array<DbvtProxy?>(STAGECOUNT, { null })
     /** Pair cache  */

@@ -94,18 +94,10 @@ class Transform {
 
     /** Multiply this Transform by another(this = this * another)
      *  @param t The other transform */
-    operator fun times(t: Transform): Transform {
-        val res = Transform()
-        res.origin put basis * t.origin
-        res.basis = basis * t.basis
-        return res
-    }
+    operator fun times(t: Transform) = Transform(basis * t.basis, this(t.origin))
 
     /** Return the inverse of this transform */
-    fun inverse(): Transform {
-        val inv = basis.transpose()
-        return Transform(inv, inv * -origin)
-    }
+    fun inverse() = basis.transpose().let { Transform(it, it * -origin) }
 
     /** Return the inverse of this transform times the other transform
      *  @param t The other transform

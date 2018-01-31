@@ -73,6 +73,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     }
 
     val invInertiaTensorWorld = Mat3()
+
     val _linearVelocity = Vec3()
     fun setLinearVelocity(linVel: Vec3) {
         updateRevision++
@@ -98,19 +99,14 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     val totalForce = Vec3()
     val totalTorque = Vec3()
 
-    var linearDamping = 0f
-    var angularDamping = 0f
-
-    init {
-        setDamping(constructionInfo.linearDamping, constructionInfo.angularDamping)
-    }
+    var linearDamping = clamped(constructionInfo.linearDamping, 0f, 1f)
+    var angularDamping = clamped(constructionInfo.angularDamping, 0f, 1f)
 
     val additionalDamping = constructionInfo.additionalDamping
     val additionalDampingFactor = constructionInfo.additionalDampingFactor
     val additionalLinearDampingThresholdSqr = constructionInfo.additionalLinearDampingThresholdSqr
     val additionalAngularDampingThresholdSqr = constructionInfo.additionalAngularDampingThresholdSqr
     val additionalAngularDampingFactor = constructionInfo.additionalAngularDampingFactor
-
 
     var linearSleepingThreshold = constructionInfo.linearSleepingThreshold
     var angularSleepingThreshold = constructionInfo.angularSleepingThreshold
@@ -139,26 +135,20 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     /** keep track of typed constraints referencing this rigid body, to disable collision between linked bodies */
     val constraintRefs = ArrayList<TypedConstraint>()
 
-    var rigidbodyFlags = 0
+    var rigidbodyFlags = RigidBodyFlags.ENABLE_GYROSCOPIC_FORCE_IMPLICIT_BODY.i
 
-    var debugBodyId = 0
-
+    var debugBodyId = uniqueId++
 
     val deltaLinearVelocity = Vec3()
     val deltaAngularVelocity = Vec3()
-    private val _angularFactor = Vec3(1f)
+    val _angularFactor = Vec3(1f)
     val invMass = inverseMass * linearFactor
-    val pushVelocity = Vec3()
-    val turnVelocity = Vec3()
-
     init {
-        debugBodyId = uniqueId++
-
         setMassProps(constructionInfo.mass, constructionInfo.localInertia)
         updateInertiaTensor()
-
-        rigidbodyFlags = RigidBodyFlags.ENABLE_GYROSCOPIC_FORCE_IMPLICIT_BODY.i
     }
+    val pushVelocity = Vec3()
+    val turnVelocity = Vec3()
 
     /** The RigidBodyConstructionInfo structure provides information to create a rigid body. Setting mass to zero
      *  creates a fixed (non-dynamic) rigid body.

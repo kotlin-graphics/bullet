@@ -74,6 +74,10 @@ enum class BroadphaseNativeTypes {
     MAX_BROADPHASE_COLLISION_TYPES;
 
     val i = ordinal
+
+    companion object {
+        fun of(i: Int) = values()[i]
+    }
 }
 
 /** The BroadphaseProxy is the main class that can be used with the Bullet broadphases.
@@ -129,6 +133,15 @@ open class BroadphaseProxy {
         fun isConvex2d(proxyType: Int) = proxyType == BOX_2D_SHAPE_PROXYTYPE.i || proxyType == CONVEX_2D_SHAPE_PROXYTYPE.i
     }
 }
+
+val BroadphaseNativeTypes.isPolyhedral get() = this < IMPLICIT_CONVEX_SHAPES_START_HERE
+val BroadphaseNativeTypes.isConvex get() = this < CONCAVE_SHAPES_START_HERE
+val BroadphaseNativeTypes.isNonMoving get() = isConcave && this != GIMPACT_SHAPE_PROXYTYPE
+val BroadphaseNativeTypes.isConcave get() = this > CONCAVE_SHAPES_START_HERE && this < CONCAVE_SHAPES_END_HERE
+val BroadphaseNativeTypes.isCompound get() = this == COMPOUND_SHAPE_PROXYTYPE
+val BroadphaseNativeTypes.isSoftBody get() = this == SOFTBODY_SHAPE_PROXYTYPE
+val BroadphaseNativeTypes.isInfinite get() = this == STATIC_PLANE_PROXYTYPE
+val BroadphaseNativeTypes.isConvex2d get() = this == BOX_2D_SHAPE_PROXYTYPE || this == CONVEX_2D_SHAPE_PROXYTYPE
 
 infix fun BroadphaseProxy.CollisionFilterGroups.xor(other: BroadphaseProxy.CollisionFilterGroups) = i xor other.i
 
