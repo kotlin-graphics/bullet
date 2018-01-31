@@ -142,7 +142,6 @@ open class CollisionWorld
     }
 
     fun updateAabbs() {
-        val predictedTrans = Transform()
         for (i in 0 until collisionObjects.size) {
             val colObj = collisionObjects[i]
             assert(colObj.worldArrayIndex == i)

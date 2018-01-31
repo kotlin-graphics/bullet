@@ -275,7 +275,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
 
         dispatchInfo.timeStep = timeStep
         dispatchInfo.stepCount = 0
-        dispatchInfo.debugDraw = debugDrawer!!
+        dispatchInfo.debugDraw = debugDrawer
 
         createPredictiveContacts(timeStep)
         // perform collision detection

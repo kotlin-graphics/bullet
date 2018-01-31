@@ -21,6 +21,7 @@ import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.linearMath.DebugDraw
 
 class DispatcherInfo {
+
     enum class DispatchFunc { Invalid, DISCRETE, CONTINUOUS }
 
     var timeStep = 0f
