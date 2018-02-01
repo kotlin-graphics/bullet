@@ -106,7 +106,7 @@ open class CollisionWorld
         val maxAabb = Vec3()
         colObj.collisionShape!!.getAabb(colObj.getWorldTransform(), minAabb, maxAabb)
         // need to increase the aabb for contact thresholds
-        val contactThreshold = Vec3(gContactBreakingThreshold)
+        val contactThreshold = gContactBreakingThreshold
         minAabb -= contactThreshold
         maxAabb += contactThreshold
 

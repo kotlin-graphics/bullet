@@ -117,8 +117,8 @@ open class BroadphaseProxy {
 //    :m_clientObject(userPtr), TODO
         this.collisionFilterGroup = collisionFilterGroup
         this.collisionFilterMask = collisionFilterMask
-        aabbMin put aabbMin
-        aabbMax put aabbMax
+        this.aabbMin put aabbMin
+        this.aabbMax put aabbMax
     }
 
     companion object {

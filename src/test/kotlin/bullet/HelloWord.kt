@@ -122,6 +122,7 @@ fun main(args: Array<String>) {
 
     // -----stepsimulation_start-----
     for (i in 0..149) {
+
         dynamicsWorld.stepSimulation(1f / 60f, 10)
 
         // print positions of all objects
