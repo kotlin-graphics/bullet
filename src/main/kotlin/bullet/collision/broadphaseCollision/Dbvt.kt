@@ -391,7 +391,6 @@ class Dbvt {
             val element = StkNN(root0, root1)
             if (stkStack.isNotEmpty()) stkStack[0] = element
             else stkStack += element
-            stkStack.ensureCapacity(DOUBLE_STACKSIZE)
             for(i in stkStack.size until DOUBLE_STACKSIZE)
                 stkStack += StkNN()
             do {
