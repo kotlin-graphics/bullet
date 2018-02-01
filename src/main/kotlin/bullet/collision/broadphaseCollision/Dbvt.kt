@@ -391,11 +391,14 @@ class Dbvt {
             val element = StkNN(root0, root1)
             if (stkStack.isNotEmpty()) stkStack[0] = element
             else stkStack += element
-            stkStack resize DOUBLE_STACKSIZE
+            stkStack.ensureCapacity(DOUBLE_STACKSIZE)
+            for(i in stkStack.size until DOUBLE_STACKSIZE)
+                stkStack += StkNN()
             do {
                 val p = stkStack[--depth]
                 if (depth > treshold) {
-                    stkStack resize (stkStack.size * 2)
+                    for(i in stkStack.size until stkStack.size * 2)
+                        stkStack += StkNN()
                     treshold = stkStack.size - 4
                 }
                 val pa = p.a!!
@@ -414,8 +417,13 @@ class Dbvt {
                             stkStack[depth++] = StkNN(pa.childs[0], pb.childs[1])
                             stkStack[depth++] = StkNN(pa.childs[1], pb.childs[1])
                         } else {
-                            stkStack[depth++] = StkNN(pa.childs[0], pb)
-                            stkStack[depth++] = StkNN(pa.childs[1], pb)
+                            val x = StkNN(pa.childs[0], pb)
+                            val y = StkNN(pa.childs[1], pb)
+                            val oldX = stkStack.set(depth++, x)
+                            val oldY = stkStack.set(depth++, y)
+                            println()
+//                            stkStack[depth++] = StkNN(pa.childs[0], pb)
+//                            stkStack[depth++] = StkNN(pa.childs[1], pb)
                         }
                     else
                         if (pb.isInternal) {

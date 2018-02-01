@@ -100,7 +100,7 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
     when {
         size > newSize -> for (i in newSize until size) pop()
         newSize > size -> when (get(0)) {
-            is Dbvt.StkNN? -> for (i in size until newSize) add(null as T)
+//            is Dbvt.StkNN? -> for (i in size until newSize) add(null as T)
             is Dbvt.StkNN -> for (i in size until newSize) add(Dbvt.StkNN() as T)
             is DbvtNode -> for (i in size until newSize) add(DbvtNode() as T)
             is BroadphasePair -> for (i in size until newSize) add(BroadphasePair() as T)
