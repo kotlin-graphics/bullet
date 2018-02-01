@@ -211,7 +211,7 @@ class Dbvt {
     var opath = 0
 
 
-    var stkStack = ArrayList<StkNN>()
+    val stkStack = ArrayList<StkNN>()
 
     // Methods
     fun clear() {
@@ -388,8 +388,10 @@ class Dbvt {
             var depth = 1
             var treshold = DOUBLE_STACKSIZE - 4
 
+            val element = StkNN(root0, root1)
+            if (stkStack.isNotEmpty()) stkStack[0] = element
+            else stkStack += element
             stkStack resize DOUBLE_STACKSIZE
-            stkStack[0] = StkNN(root0, root1)
             do {
                 val p = stkStack[--depth]
                 if (depth > treshold) {
@@ -398,10 +400,12 @@ class Dbvt {
                 }
                 val pa = p.a!!
                 val pb = p.b!!
-                if (pa === pb && pa.isInternal) {
-                    stkStack[depth++] = StkNN(pa.childs[0], pa.childs[0])
-                    stkStack[depth++] = StkNN(pa.childs[1], pa.childs[1])
-                    stkStack[depth++] = StkNN(pa.childs[0], pa.childs[1])
+                if (pa === pb) {
+                    if (pa.isInternal) {
+                        stkStack[depth++] = StkNN(pa.childs[0], pa.childs[0])
+                        stkStack[depth++] = StkNN(pa.childs[1], pa.childs[1])
+                        stkStack[depth++] = StkNN(pa.childs[0], pa.childs[1])
+                    }
                 } else if (pa.volume intersect pb.volume)
                     if (pa.isInternal)
                         if (pb.isInternal) {
@@ -454,7 +458,7 @@ class Dbvt {
         }
     }
 
-    var tMin = 1f
+    var _tMin = 1f
     /** rayTestInternal is faster than rayTest, because it uses a persistent stack (to reduce dynamic memory allocations
      *  to a minimum) and it uses precomputed signs/rayInverseDirections
      *  rayTestInternal is used by DbvtBroadphase to accelerate world ray casts */
@@ -470,9 +474,9 @@ class Dbvt {
                 val node = stack[--depth]
                 bounds[0] = node.volume.min - aabbMax
                 bounds[1] = node.volume.max - aabbMin
-                tMin = 1f
+                _tMin = 1f
                 val lambdaMin = 0f
-                val result1 = rayAabb2(rayFrom, rayDirectionInverse, signs, bounds, ::tMin, lambdaMin, lambdaMax)
+                val result1 = rayAabb2(rayFrom, rayDirectionInverse, signs, bounds, ::_tMin, lambdaMin, lambdaMax)
                 if (result1) {
                     if (node.isInternal) {
                         if (depth > treshold) {

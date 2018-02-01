@@ -228,8 +228,8 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
             }
         }
         listRemove(proxy, stageRoots, proxy.stage)
-        proxy.aabbMin = aabbMin
-        proxy.aabbMax = aabbMax
+        proxy.aabbMin put aabbMin
+        proxy.aabbMax put aabbMax
         proxy.stage = stageCurrent
         listAppend(proxy, stageRoots, stageCurrent)
         if (doCollide) {
