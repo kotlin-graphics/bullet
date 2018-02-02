@@ -420,7 +420,8 @@ class Dbvt {
                             val y = StkNN(pa.childs[1], pb)
                             val oldX = stkStack.set(depth++, x)
                             val oldY = stkStack.set(depth++, y)
-                            println()
+                            println(x)
+                            println(stkStack[0])
 //                            stkStack[depth++] = StkNN(pa.childs[0], pb)
 //                            stkStack[depth++] = StkNN(pa.childs[1], pb)
                         }
