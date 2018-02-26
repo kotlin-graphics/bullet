@@ -95,7 +95,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         solverConstraint.solverBodyIdB = solverBodyIdB
 
         solverConstraint.friction = cp.combinedFriction
-        solverConstraint.originalContactPoint = 0
+        solverConstraint.originalContactPoint = null
 
         solverConstraint.appliedImpulse = 0f
         solverConstraint.appliedPushImpulse = 0f
@@ -185,7 +185,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         solverConstraint.solverBodyIdB = solverBodyIdB
 
         solverConstraint.friction = combinedTorsionalFriction
-        solverConstraint.originalContactPoint = 0
+        solverConstraint.originalContactPoint = null
 
         solverConstraint.appliedImpulse = 0f
         solverConstraint.appliedPushImpulse = 0f
@@ -1134,7 +1134,6 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         ///@todo: use stack allocator for such temporarily memory, same for solver bodies/constraints
         resize(::orderNonContactConstraintPool, numNonContactPool)
         val newSize = numConstraintPool * if (infoGlobal.solverMode has Sm.USE_2_FRICTION_DIRECTIONS) 2 else 1
-        println(newSize)
         resize(::orderTmpConstraintPool, newSize)
 
         resize(::orderFrictionConstraintPool, numFrictionPool)

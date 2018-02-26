@@ -16,6 +16,7 @@ subject to the following restrictions:
 package bullet.dynamics.constraintSolver
 
 import bullet.BYTES
+import bullet.collision.narrowPhaseCollision.ManifoldPoint
 import bullet.linearMath.Vec3
 
 /** 1D constraint along a normal axis between bodyA and bodyB. It can be combined to solve contact and friction constraints.    */
@@ -44,15 +45,18 @@ class SolverConstraint {
     var rhsPenetration = 0f
 
     private var union: Any? = null
-    var originalContactPoint: Any? = null
+    var originalContactPoint
+        get() = union
         set(value) {
             union = value
         }
-    var unusedPadding4 = 0f
+    var unusedPadding4
+        get() = union as? Float
         set(value) {
             union = value
         }
-    var numRowsForNonContactConstraint = 0
+    var numRowsForNonContactConstraint
+        get() = union as? Int
         set(value) {
             union = value
         }

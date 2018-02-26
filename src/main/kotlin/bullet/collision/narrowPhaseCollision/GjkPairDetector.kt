@@ -106,7 +106,6 @@ class GjkPairDetector(
         simplexSolver!!.reset()
 
         while (true) {
-            println("in")
             val seperatingAxisInA = (-cachedSeparatingAxis) * input.transformA.basis
             val seperatingAxisInB = cachedSeparatingAxis * input.transformB.basis
 

@@ -27,7 +27,6 @@ repositories {
     mavenCentral()
     jcenter()
     maven { setUrl("https://dl.bintray.com/kotlin/kotlin-dev") }
-    maven { setUrl("https://kotlin.bintray.com/kotlin-eap-1.2") }
     maven { setUrl("https://jitpack.io") }
 }
 

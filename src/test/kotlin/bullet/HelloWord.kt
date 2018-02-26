@@ -28,10 +28,18 @@ import bullet.linearMath.DefaultMotionState
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 import io.kotlintest.matchers.shouldBe
+import io.kotlintest.specs.StringSpec
 
 // This is a Hello World program for running a basic Bullet physics simulation
 
-fun main(args: Array<String>) {
+class helloWorld : StringSpec() {
+
+    init {
+        test()
+    }
+}
+
+fun test() {
 
     // -----includes_end-----
 
@@ -135,7 +143,10 @@ fun main(args: Array<String>) {
             if (j == 0)
                 trans.origin shouldBe Vec3(0f, -56f, 0f)
             else
-                println("[$i] world pos object $j = ${trans.origin.x},${trans.origin.y},${trans.origin.z}")
+                println("[$i] world pos object $j = ${trans.origin.x}, ${trans.origin.y}, ${trans.origin.z}").also {
+                    if (i == 149)
+                        trans.origin shouldBe Vec3(2.000063f, -5.0000086f, 9.15244E-5f)
+                }
         }
     }
 
