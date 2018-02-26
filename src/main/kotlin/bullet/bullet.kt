@@ -97,7 +97,8 @@ fun <T> ArrayList<T>.swap(index0: Int, index1: Int) {
 }
 
 infix fun <T> ArrayList<T>.resize(newSize: Int) {
-    when {
+    if (newSize == 0) clear()
+    else when {
         size > newSize -> for (i in newSize until size) pop()
         newSize > size -> when (get(0)) {
 //            is Dbvt.StkNN? -> for (i in size until newSize) add(null as T)
@@ -109,32 +110,32 @@ infix fun <T> ArrayList<T>.resize(newSize: Int) {
             is Int -> for (i in size until newSize) add(0 as T)
             is Vec3 -> for (i in size until newSize) add(Vec3() as T)
             is QuantizedBvhNode -> for (i in size until newSize) add(QuantizedBvhNode() as T)
-            is CollisionAlgorithm? -> for (i in size until newSize) add(null as T)
+            is CollisionAlgorithm -> for (i in size until newSize) add(null as T)
         }
     }
 }
 
 
-val DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION = false
-val COMPARE_BTRAY_AABB2 = false
-val USE_PATH_COMPRESSION = true
-val USE_STATIC_ONLY = false
-val BT_NO_PROFILE = true
-val USE_SEPDISTANCE_UTIL2 = false
-val DISABLE_CAPSULE_CAPSULE_COLLIDER = true
-val TEST_INTERNAL_OBJECTS = true
-val ONLY_REPORT_DEEPEST_POINT = false
-val ZERO_MARGIN = false
-val DEBUG_CONTACTS = false
-val CLEAR_MANIFOLD = true
-val USE_PERSISTENT_CONTACTS = true
-val USE_CENTER_POINT = false
+var DISABLE_DBVT_COMPOUNDSHAPE_RAYCAST_ACCELERATION = false
+var COMPARE_BTRAY_AABB2 = false
+var USE_PATH_COMPRESSION = true
+var USE_STATIC_ONLY = false
+var BT_NO_PROFILE = true
+var USE_SEPDISTANCE_UTIL2 = false
+var DISABLE_CAPSULE_CAPSULE_COLLIDER = false
+var TEST_INTERNAL_OBJECTS = true
+var ONLY_REPORT_DEEPEST_POINT = false
+var ZERO_MARGIN = false
+var DEBUG_CONTACTS = false
+var CLEAR_MANIFOLD = true
+var USE_PERSISTENT_CONTACTS = true
+var USE_CENTER_POINT = false
 
 
 /** internal debugging variable. this value shouldn't be too high */
 var gNumClampedCcdMotions = 0
 
 
-fun BT_PROFILE(text: String){
-    if(DEBUG) println(text)
+fun BT_PROFILE(text: String) {
+    if (DEBUG) println(text)
 }

@@ -15,6 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
+import bullet.collision.collisionDispatch.CollisionObject
 import bullet.f
 import bullet.linearMath.Vec3
 import bullet.resize
@@ -36,7 +37,7 @@ val DBVT_BP_MARGIN = 0.05f
 //#endif
 
 /** DbvtProxy   */
-class DbvtProxy(aabbMin: Vec3, aabbMax: Vec3, userPtr: Any?, collisionFilterGroup: Int, collisionFilterMask: Int) :
+class DbvtProxy(aabbMin: Vec3, aabbMax: Vec3, userPtr: CollisionObject, collisionFilterGroup: Int, collisionFilterMask: Int) :
         BroadphaseProxy(aabbMin, aabbMax, userPtr, collisionFilterGroup, collisionFilterMask) {
     var leaf: DbvtNode? = null
     var links = Array<DbvtProxy?>(2, { null })
@@ -135,14 +136,14 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
                 sets[0].collideTTpersistentStack(sets[0].root, sets[0].root, collider)
             }
         }
-        /* clean up				*/
+        // clean up
         if (needCleanup) {
             val pairs = pairCache.overlappingPairArray
             if (pairs.size > 0) {
                 var ni = min(pairs.size, max(newPairs, (pairs.size * cUpdates) / 100))
                 var i = 0
                 while (i < ni) {
-                    val p = pairs[(cId + i) % pairs.size]
+                    val p = pairs[(cId + i) % pairs.size]!!
                     val pa = p.proxy0 as DbvtProxy
                     val pb = p.proxy1 as DbvtProxy
                     if (!(pa.leaf!!.volume intersect pb.leaf!!.volume)) {
@@ -167,7 +168,7 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
         sets[1].optimizeTopDown()
     }
 
-    override fun createProxy(aabbMin: Vec3, aabbMax: Vec3, shapeType: Int, userPtr: Any?, collisionFilterGroup: Int,
+    override fun createProxy(aabbMin: Vec3, aabbMax: Vec3, shapeType: Int, userPtr: CollisionObject, collisionFilterGroup: Int,
                              collisionFilterMask: Int, dispatcher: Dispatcher): BroadphaseProxy {
 
         val proxy = DbvtProxy(aabbMin, aabbMax, userPtr, collisionFilterGroup, collisionFilterMask)
@@ -189,55 +190,55 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
     }
 
     override fun destroyProxy(proxy: BroadphaseProxy, dispatcher: Dispatcher) {
-        val proxy = proxy as DbvtProxy
-        sets[if (proxy.stage == STAGECOUNT) 1 else 0] remove proxy.leaf
-        listRemove(proxy, stageRoots, proxy.stage)
-        pairCache.removeOverlappingPairsContainingProxy(proxy, dispatcher)
+        val p = proxy as DbvtProxy
+        sets[if (p.stage == STAGECOUNT) 1 else 0] remove p.leaf
+        listRemove(p, stageRoots, p.stage)
+        pairCache.removeOverlappingPairsContainingProxy(p, dispatcher)
         needCleanup = true
     }
 
     override fun setAabb(proxy: BroadphaseProxy, aabbMin: Vec3, aabbMax: Vec3, dispatcher: Dispatcher) {
-        val proxy = proxy as DbvtProxy
+        val p = proxy as DbvtProxy
         val aabb = DbvtVolume.fromMM(aabbMin, aabbMax)
 
         var doCollide = false
-        if (proxy.stage == STAGECOUNT) {
+        if (p.stage == STAGECOUNT) {
             /* fixed -> dynamic set	*/
-            sets[1] remove proxy.leaf
-            proxy.leaf = sets[0].insert(aabb, proxy)
+            sets[1] remove p.leaf
+            p.leaf = sets[0].insert(aabb, p)
             doCollide = true
         } else {
             /* dynamic set				*/
             ++updatesCall
-            if (proxy.leaf!!.volume intersect aabb) {
+            if (p.leaf!!.volume intersect aabb) {
                 /* Moving				*/
-                val delta = aabbMin - proxy.aabbMin
-                val velocity = Vec3(((proxy.aabbMax - proxy.aabbMin) / 2f) * prediction)
+                val delta = aabbMin - p.aabbMin
+                val velocity = Vec3(((p.aabbMax - p.aabbMin) / 2f) * prediction)
                 if (delta[0] < 0) velocity[0] = -velocity[0]
                 if (delta[1] < 0) velocity[1] = -velocity[1]
                 if (delta[2] < 0) velocity[2] = -velocity[2]
-                if (sets[0].update(proxy.leaf!!, aabb, velocity, DBVT_BP_MARGIN)) {
+                if (sets[0].update(p.leaf!!, aabb, velocity, DBVT_BP_MARGIN)) {
                     ++updatesDone
                     doCollide = true
                 }
             } else {
                 /* Teleporting			*/
-                sets[0].update(proxy.leaf!!, aabb)
+                sets[0].update(p.leaf!!, aabb)
                 ++updatesDone
                 doCollide = true
             }
         }
-        listRemove(proxy, stageRoots, proxy.stage)
-        proxy.aabbMin put aabbMin
-        proxy.aabbMax put aabbMax
-        proxy.stage = stageCurrent
-        listAppend(proxy, stageRoots, stageCurrent)
+        listRemove(p, stageRoots, p.stage)
+        p.aabbMin put aabbMin
+        p.aabbMax put aabbMax
+        p.stage = stageCurrent
+        listAppend(p, stageRoots, stageCurrent)
         if (doCollide) {
             needCleanup = true
             if (!deferedCollide) {
                 val collider = DbvtTreeCollider(this)
-                sets[1].collideTTpersistentStack(sets[1].root, proxy.leaf, collider)
-                sets[0].collideTTpersistentStack(sets[0].root, proxy.leaf, collider)
+                sets[1].collideTTpersistentStack(sets[1].root, p.leaf, collider)
+                sets[0].collideTTpersistentStack(sets[0].root, p.leaf, collider)
             }
         }
     }
@@ -340,19 +341,21 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
         val overlappingPairArray = pairCache.overlappingPairArray
 
         //perform a sort, to find duplicates and to sort 'invalid' pairs to the end
-        overlappingPairArray.sortWith(BroadphasePairSortPredicate)
+        overlappingPairArray quickSort ::BroadphasePairSortPredicate
 
         var invalidPair = 0
 
         var previousPair = BroadphasePair()
 
-        overlappingPairArray.forEach { pair ->
+        for(i in 0 until overlappingPairArray.size) {
 
-            val isDuplicate = pair === previousPair // TODO check if double or triple
+            val pair = overlappingPairArray[i]!!
+
+            val isDuplicate = pair === previousPair
 
             previousPair = pair
 
-            var needsRemoval = false
+            var needsRemoval: Boolean
 
             if (!isDuplicate) {
                 //important to perform AABB check that is consistent with the broadphase
@@ -373,8 +376,8 @@ class DbvtBroadphase(pairCache: OverlappingPairCache? = null) : BroadphaseInterf
             }
         }
         //perform a sort, to sort 'invalid' pairs to the end
-        overlappingPairArray.sortWith(BroadphasePairSortPredicate)
-        overlappingPairArray resize (overlappingPairArray.size - invalidPair)
+        overlappingPairArray quickSort ::BroadphasePairSortPredicate
+        overlappingPairArray.resize(overlappingPairArray.size - invalidPair)
     }
 
     /** This setAabbForceUpdate is similar to setAabb but always forces the aabb update.

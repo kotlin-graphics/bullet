@@ -23,6 +23,7 @@ import bullet.linearMath.rayAabb
 import bullet.linearMath.rayAabb2
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.reflect.KMutableProperty0
 
 /* btDbvtAabbMm			*/
 class DbvtAabbMm(val min: Vec3 = Vec3(), val max: Vec3 = Vec3()) {
@@ -34,14 +35,27 @@ class DbvtAabbMm(val min: Vec3 = Vec3(), val max: Vec3 = Vec3()) {
     companion object {
         fun fromCE(c: Vec3, e: Vec3) = DbvtAabbMm(c - e, c + e)
         fun fromCR(c: Vec3, r: Float) = fromCE(c, Vec3(r))
-        fun fromMM(mi: Vec3, mx: Vec3) = DbvtAabbMm(mi, mx)
+        fun fromMM(mi: Vec3, mx: Vec3) = DbvtAabbMm(Vec3(mi), Vec3(mx))
         fun fromPoints(pts: Array<Vec3>) = DbvtAabbMm().apply { pts.forEach { min.setMin(it); max.setMax(it); } }
     }
 
-    infix fun expand(e: Vec3) {
+    infix fun put(other: DbvtAabbMm) {
+        min put other.min
+        max put other.max
+        center put other.center
+        lengths put other.lengths
+        extents put other.extents
+    }
+
+    infix fun expand(e: Float) {
         min -= e
         max += e
     }
+
+//    infix fun expand(e: Vec3) {
+//        min -= e
+//        max += e
+//    }
 
     infix fun signedExpand(e: Vec3) {
         if (e.x > 0) max.x = max.x + e[0] else min.x = min.x + e[0]
@@ -147,13 +161,25 @@ class DbvtAabbMm(val min: Vec3 = Vec3(), val max: Vec3 = Vec3()) {
 typealias DbvtVolume = DbvtAabbMm
 
 class DbvtNode {
+
     var volume = DbvtVolume()
     var parent: DbvtNode? = null
 
-    //union TODO getter/setters?
-    val childs = Array<DbvtNode?>(2, { null })
-    var data: Any? = null
-    var dataAsInt = 0
+    inner class UnionArray {
+        operator fun get(index: Int) = union[index] as? DbvtNode
+        operator fun set(index: Int, node: DbvtNode?) = union.set(index, node)
+    }
+
+    private val union = Array<Any?>(2) { null }
+
+    val childs = UnionArray()
+    var data
+        get() = union[0]
+        set(value) = union.set(0, value)
+    var dataAsInt
+        get() = union[0] as Int
+        set(value) = union.set(0, value)
+
 
     val isLeaf get() = childs[1] == null
     val isInternal get() = !isLeaf
@@ -248,7 +274,7 @@ class Dbvt {
                     var node = it
                     var bit = 0
                     while (node.isInternal) {
-                        node = sort(node, it).childs[(opath ushr bit) and 1]!!
+                        node = sort(stkStack, node, it).childs[(opath ushr bit) and 1]!!
                         bit = (bit + 1) and (Int.BYTES * 8 - 1)
                     }
                     update(node)
@@ -260,43 +286,42 @@ class Dbvt {
 
     fun insert(volume: DbvtVolume, data: Any?): DbvtNode {
         val leaf = createNode(null, volume, data)
-        insertLeaf(root, leaf)
+        insertLeaf(::root, leaf)
         ++leaves
-        return (leaf)
+        return leaf
     }
 
     fun update(leaf: DbvtNode, lookAhead: Int = -1) {
-        var _root = removeLeaf(leaf)
-        if (_root != null) {
+        ref = removeLeaf(leaf)
+        if (ref != null) {
             if (lookAhead >= 0) {
                 var i = 0
                 while (i < lookAhead) {
-                    _root!!.parent?.let { _root = it }
+                    ref!!.parent?.let { ref = it }
                     ++i
                 }
-            } else _root = root
+            } else ref = root
         }
-        insertLeaf(_root, leaf)
+        insertLeaf(::ref, leaf)
     }
 
     fun update(leaf: DbvtNode, volume: DbvtVolume) {
-        var _root = removeLeaf(leaf)
-        if (_root != null) {
+        ref = removeLeaf(leaf)
+        if (ref != null)
             if (lkhd >= 0) {
                 var i = 0
                 while (i < lkhd) {
-                    _root!!.parent?.let { _root = it }
+                    ref!!.parent?.let { ref = it }
                     ++i
                 }
-            } else _root = root
-        }
-        leaf.volume = volume
-        insertLeaf(_root, leaf)
+            } else ref = root
+        leaf.volume put volume
+        insertLeaf(::ref, leaf)
     }
 
     fun update(leaf: DbvtNode, volume: DbvtVolume, velocity: Vec3, margin: Float): Boolean {
         if (leaf.volume contain volume) return false
-        volume expand Vec3(margin)
+        volume expand margin
         volume signedExpand velocity
         update(leaf, volume)
         return true
@@ -311,7 +336,7 @@ class Dbvt {
 
     fun update(leaf: DbvtNode, volume: DbvtVolume, margin: Float): Boolean {
         if (leaf.volume contain volume) return false
-        volume expand Vec3(margin)
+        volume expand margin
         update(leaf, volume)
         return true
     }
@@ -391,12 +416,12 @@ class Dbvt {
             val element = StkNN(root0, root1)
             if (stkStack.isNotEmpty()) stkStack[0] = element
             else stkStack += element
-            for(i in stkStack.size until DOUBLE_STACKSIZE)
+            for (i in stkStack.size until DOUBLE_STACKSIZE)
                 stkStack += StkNN()
             do {
                 val p = stkStack[--depth]
                 if (depth > treshold) {
-                    for(i in stkStack.size until stkStack.size * 2)
+                    for (i in stkStack.size until stkStack.size * 2)
                         stkStack += StkNN()
                     treshold = stkStack.size - 4
                 }
@@ -416,14 +441,8 @@ class Dbvt {
                             stkStack[depth++] = StkNN(pa.childs[0], pb.childs[1])
                             stkStack[depth++] = StkNN(pa.childs[1], pb.childs[1])
                         } else {
-                            val x = StkNN(pa.childs[0], pb)
-                            val y = StkNN(pa.childs[1], pb)
-                            val oldX = stkStack.set(depth++, x)
-                            val oldY = stkStack.set(depth++, y)
-                            println(x)
-                            println(stkStack[0])
-//                            stkStack[depth++] = StkNN(pa.childs[0], pb)
-//                            stkStack[depth++] = StkNN(pa.childs[1], pb)
+                            stkStack[depth++] = StkNN(pa.childs[0], pb)
+                            stkStack[depth++] = StkNN(pa.childs[1], pb)
                         }
                     else
                         if (pb.isInternal) {
@@ -562,6 +581,9 @@ class Dbvt {
 
     // Constants
     companion object {
+
+        var ref: DbvtNode? = null
+
         val SIMPLE_STACKSIZE = 64
         val DOUBLE_STACKSIZE = SIMPLE_STACKSIZE * 2
 
@@ -661,27 +683,26 @@ class Dbvt {
             }
     }
 
-    fun createNode(parent: DbvtNode?, volume: DbvtVolume, data: Any?) = createNode(parent, data).also { it.volume = volume }
+    fun createNode(parent: DbvtNode?, volume: DbvtVolume, data: Any?) = createNode(parent, data).also { it.volume put volume }
     fun createNode(parent: DbvtNode?, volume0: DbvtVolume, volume1: DbvtVolume, data: Any?) =
             createNode(parent, data).also { volume0.merge(volume1, it.volume) }
 
-    fun insertLeaf(_root: DbvtNode?, leaf: DbvtNode) {
+    fun insertLeaf(_root: KMutableProperty0<DbvtNode?>, leaf: DbvtNode) {
         if (root == null) {
             root = leaf
             leaf.parent = null
         } else {
-            var _root = _root
-            if (!_root!!.isLeaf) {
+            _root as KMutableProperty0<DbvtNode>
+            if (!_root().isLeaf)
                 do {
-                    _root = _root!!.childs[leaf.volume.select(_root.childs[0]!!.volume, _root.childs[1]!!.volume)]!!
-                } while (!_root!!.isLeaf)
-            }
-            var prev = _root.parent
-            var node = createNode(prev, leaf.volume, _root.volume, 0)
+                    _root.set(_root().childs[leaf.volume.select(_root().childs[0]!!.volume, _root().childs[1]!!.volume)]!!)
+                } while (!_root().isLeaf)
+            var prev = _root().parent
+            var node = createNode(prev, leaf.volume, _root().volume, 0)
             if (prev != null) {
-                prev.childs[_root.indexOf] = node
-                node.childs[0] = _root;_root.parent = node
-                node.childs[1] = leaf;leaf.parent = node
+                prev.childs[_root().indexOf] = node
+                node.childs[0] = _root(); _root().parent = node
+                node.childs[1] = leaf; leaf.parent = node
                 do {
                     if (!prev!!.volume.contain(node.volume))
                         prev.childs[0]!!.volume.merge(prev.childs[1]!!.volume, prev.volume)
@@ -690,8 +711,8 @@ class Dbvt {
                     prev = node.parent
                 } while (prev != null)
             } else {
-                node.childs[0] = _root;_root.parent = node
-                node.childs[1] = leaf;leaf.parent = node
+                node.childs[0] = _root(); _root().parent = node
+                node.childs[1] = leaf; leaf.parent = node
                 root = node
             }
         }
@@ -858,28 +879,30 @@ fun topDown(dbvt: Dbvt, leaves: ArrayList<DbvtNode>, ptr: Int, count: Int, buTre
     return leaves[ptr]
 }
 
-fun sort(n: DbvtNode, r: DbvtNode): DbvtNode {
+fun sort(stack: ArrayList<Dbvt.StkNN>, n: DbvtNode, r: DbvtNode): DbvtNode {
     val p = n.parent
     assert(n.isInternal)
-    TODO()
-//    if (p > n) {
-//        const int i = indexof(n)
-//        const int j = 1 - i
-//        btDbvtNode * s = p->childs[j]
-//        btDbvtNode * q = p->parent
-//        btAssert(n == p->childs[i])
-//        if (q) q->childs[indexof(p)] = n; else r = n
-//        s->parent = n
-//        p->parent = n
-//        n->parent = q
-//        p->childs[0] = n->childs[0]
-//        p->childs[1] = n->childs[1]
-//        n->childs[0]->parent = p
-//        n->childs[1]->parent = p
-//        n->childs[i] = p
-//        n->childs[j] = s
-//        btSwap(p->volume, n->volume)
-//        return (p)
-//    }
-//    return (n)
+    if (p != null) {
+        TODO()
+//        if (p > n) {
+//            const int i = indexof(n)
+//            const int j = 1 - i
+//            btDbvtNode * s = p->childs[j]
+//            btDbvtNode * q = p->parent
+//            btAssert(n == p->childs[i])
+//            if (q) q->childs[indexof(p)] = n; else r = n
+//            s->parent = n
+//            p->parent = n
+//            n->parent = q
+//            p->childs[0] = n->childs[0]
+//            p->childs[1] = n->childs[1]
+//            n->childs[0]->parent = p
+//            n->childs[1]->parent = p
+//            n->childs[i] = p
+//            n->childs[j] = s
+//            btSwap(p->volume, n->volume)
+//            return (p)
+//        }
+    }
+    return n
 }

@@ -15,6 +15,7 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
+import bullet.collision.collisionDispatch.CollisionObject
 import bullet.linearMath.Vec3
 
 interface BroadphaseAabbCallback {
@@ -35,7 +36,7 @@ open class BroadphaseRayCallback : BroadphaseAabbCallback {
  *  class.  */
 interface BroadphaseInterface {
 
-    fun createProxy(aabbMin: Vec3, aabbMax: Vec3, shapeType: Int, userPtr: Any?, collisionFilterGroup: Int,
+    fun createProxy(aabbMin: Vec3, aabbMax: Vec3, shapeType: Int, userPtr: CollisionObject, collisionFilterGroup: Int,
                     collisionFilterMask: Int, dispatcher: Dispatcher): BroadphaseProxy
 
     fun destroyProxy(proxy: BroadphaseProxy, dispatcher: Dispatcher)

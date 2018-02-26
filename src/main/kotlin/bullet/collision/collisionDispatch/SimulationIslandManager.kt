@@ -96,7 +96,7 @@ class SimulationIslandManager {
         if (numOverlappingPairs != 0) {
             val pairPtr = pairCachePtr.overlappingPairArray
             for (i in 0 until numOverlappingPairs) {
-                val collisionPair = pairPtr[i]
+                val collisionPair = pairPtr[i]!!
                 val colObj0 = collisionPair.proxy0!!.clientObject as? CollisionObject
                 val colObj1 = collisionPair.proxy1!!.clientObject as? CollisionObject
                 if (colObj0 != null && colObj0.mergesSimulationIslands() && colObj1 != null && colObj1.mergesSimulationIslands()) {
@@ -107,8 +107,8 @@ class SimulationIslandManager {
     }
 
     interface IslandCallback {
-        fun processIsland(bodies: ArrayList<CollisionObject>, numBodies: Int, manifolds: MutableList<PersistentManifold>,
-                          numManifolds: Int, islandId: Int)
+        fun processIsland(bodies: ArrayList<CollisionObject>, numBodies: Int, manifolds: ArrayList<PersistentManifold>,
+                          manifoldsPtr: Int, numManifolds: Int, islandId: Int)
     }
 
     /** @todo: this is random access, it can be walked 'cache friendly'! */
@@ -124,7 +124,7 @@ class SimulationIslandManager {
         if (!splitIslands) {
             val manifold = dispatcher.internalManifoldPointer!!
             val maxNumManifolds = dispatcher.numManifolds
-            callback.processIsland(collisionObjects, collisionObjects.size, manifold, maxNumManifolds, -1)
+            callback.processIsland(collisionObjects,  collisionObjects.size, manifold, 0, maxNumManifolds, -1)
         } else {
             /*  Sort manifolds, based on islands
                 Sort the vector using predicate and std::sort
@@ -139,15 +139,15 @@ class SimulationIslandManager {
 
             //	printf("Start Islands\n");
             //traverse the simulation islands, and call the solver, unless all objects are sleeping/deactivated
-            var startIslandIndex = 0
+            startIslandIndex = 0
             while (startIslandIndex < numElem) {
                 val islandId = unionFind[startIslandIndex].id
                 var islandSleeping = true
-                var endIslandIndex = startIslandIndex
+                endIslandIndex = startIslandIndex
                 while (endIslandIndex < numElem && unionFind[endIslandIndex].id == islandId) {
                     val i = unionFind[endIslandIndex].sz
                     val colObj0 = collisionObjects[i]
-                    islandBodies.add(colObj0)
+                    islandBodies += colObj0
                     if (colObj0.isActive) islandSleeping = false
                     endIslandIndex++
                 }
@@ -166,8 +166,7 @@ class SimulationIslandManager {
                     }
                 }
                 if (!islandSleeping) {
-                    callback.processIsland(islandBodies, islandBodies.size,
-                            islandManifold.subList(startIslandIndex, islandManifold.lastIndex), numIslandManifolds, islandId)
+                    callback.processIsland(islandBodies, islandBodies.size, islandManifold, startManifold, numIslandManifolds, islandId)
                     //			printf("Island callback of size:%d bodies, %d manifolds\n",islandBodies.size(),numIslandManifolds);
                 }
                 if (numIslandManifolds != 0) startManifoldIndex = endManifoldIndex

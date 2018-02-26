@@ -5,36 +5,30 @@ apply plugin: 'com.github.johnrengelman.shadow'
 
 buildscript {
 
-    ext.kotlinVersion = '1.2.21'
+    ext.kotlinVersion = '1.2.30-eap-47'
 
     repositories {
         jcenter()   // shadow
         mavenCentral()
-        maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
-        maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
-        maven {
-            url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2'
-        }
+        maven { setUrl("https://dl.bintray.com/kotlin/kotlin-dev") }
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.2'
     }
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib"
-    testCompile 'io.kotlintest:kotlintest:2.0.6'
+    testCompile 'io.kotlintest:kotlintest:2.0.7'
 }
 
 repositories {
     mavenCentral()
-    maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
-    maven { url "https://dl.bintray.com/kotlin/kotlin-eap" }
-    maven { url "https://jitpack.io" }
-    maven {
-        url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2'
-    }
+    jcenter()
+    maven { setUrl("https://dl.bintray.com/kotlin/kotlin-dev") }
+    maven { setUrl("https://kotlin.bintray.com/kotlin-eap-1.2") }
+    maven { setUrl("https://jitpack.io") }
 }
 
 

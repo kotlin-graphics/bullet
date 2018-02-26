@@ -30,15 +30,15 @@ abstract class ConstraintSolver {
     fun prepareSolve(numBodies: Int, numManifolds: Int) = Unit
 
     /** solve a group of constraints    */
-    fun solveGroup(bodies: ArrayList<CollisionObject>, numBodies: Int,
-                   manifold: List<PersistentManifold>, numManifolds: Int,
-                   constraints: List<TypedConstraint>, numConstraints: Int,
-                   info: ContactSolverInfo, debugDrawer: DebugDraw, dispatcher: Dispatcher) = 0f
+    abstract fun solveGroup(bodies: ArrayList<CollisionObject>, numBodies: Int,
+                            manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                            constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                            infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?, dispatcher: Dispatcher): Float
 
-    fun allSolved(info: ContactSolverInfo, debugDrawer: DebugDraw) = Unit
+    fun allSolved(info: ContactSolverInfo, debugDrawer: DebugDraw?) = Unit
 
     /** clear internal cached data and reset random seed    */
-    fun reset() = Unit
+    abstract fun reset()
 
     val solverType = ConstraintSolverType.SEQUENTIAL_IMPULSE_SOLVER
 }

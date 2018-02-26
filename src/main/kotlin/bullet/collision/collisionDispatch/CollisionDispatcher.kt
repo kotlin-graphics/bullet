@@ -15,12 +15,15 @@ subject to the following restrictions:
 
 package bullet.collision.collisionDispatch
 
-import bullet.*
 import bullet.collision.broadphaseCollision.*
-import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.collision.narrowPhaseCollision.gContactBreakingThreshold
+import bullet.has
+import bullet.hasnt
+import bullet.pop
+import bullet.swapLastAt
 import kotlin.math.min
+import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as BNT
 import bullet.collision.broadphaseCollision.DispatcherQueryType as DQT
 import bullet.collision.collisionDispatch.CollisionDispatcher.DispatcherFlags as DF
 
@@ -121,10 +124,10 @@ class CollisionDispatcher(val collisionConfiguration: CollisionConfiguration) : 
         val a = body0Wrap.collisionShape.shapeType.i
         val b = body1Wrap.collisionShape.shapeType.i
         val ci = CollisionAlgorithmConstructionInfo(this, sharedManifold)
-        return if (queryType == DQT.CONTACT_POINT_ALGORITHMS)
-            doubleDispatchContactPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
-        else
-            doubleDispatchClosestPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
+        return when (queryType) {
+            DQT.CONTACT_POINT_ALGORITHMS -> doubleDispatchContactPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
+            else -> doubleDispatchClosestPoints[a][b].createCollisionAlgorithm(ci, body0Wrap, body1Wrap)
+        }
     }
 
     override fun needsCollision(body0: CollisionObject?, body1: CollisionObject?): Boolean {

@@ -27,6 +27,7 @@ import bullet.dynamics.dynamics.RigidBody
 import bullet.linearMath.DefaultMotionState
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
+import io.kotlintest.matchers.shouldBe
 
 // This is a Hello World program for running a basic Bullet physics simulation
 
@@ -130,11 +131,11 @@ fun main(args: Array<String>) {
 
             val obj = dynamicsWorld.collisionObjects[j]
             val body = RigidBody.upcast(obj)
-            val trans =
-                    if (body?.motionState != null)
-                        Transform().also { body.motionState!!.getWorldTransform(it) }
-                    else obj.getWorldTransform()
-            println("world pos object $j = ${trans.origin.x},${trans.origin.y},${trans.origin.z}")
+            val trans = body?.motionState?.run { Transform().also(::getWorldTransform) } ?: obj.getWorldTransform()
+            if (j == 0)
+                trans.origin shouldBe Vec3(0f, -56f, 0f)
+            else
+                println("[$i] world pos object $j = ${trans.origin.x},${trans.origin.y},${trans.origin.z}")
         }
     }
 

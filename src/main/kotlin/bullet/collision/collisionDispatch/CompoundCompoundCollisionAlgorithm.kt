@@ -176,30 +176,32 @@ class CompoundCompoundCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo,
                 stkStack[0] = Dbvt.StkNN(root0, root1)
                 do {
                     val p = stkStack[--depth]!!
-                    if (myIntersect(p.a!!.volume, p.b!!.volume, xform, distanceThreshold)) {
+                    val pa = p.a!!
+                    val pb = p.b!!
+                    if (myIntersect(pa.volume, pb.volume, xform, distanceThreshold)) {
                         if (depth > treshold) {
                             stkStack.resize(stkStack.size * 2)
                             treshold = stkStack.size - 4
                         }
                         when {
-                            p.a!!.isInternal -> when {
-                                p.b!!.isInternal -> {
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[0], p.b!!.childs[0])
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[1], p.b!!.childs[0])
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[0], p.b!!.childs[1])
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[1], p.b!!.childs[1])
+                            pa.isInternal -> when {
+                                pb.isInternal -> {
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[0], pb.childs[0])
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[1], pb.childs[0])
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[0], pb.childs[1])
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[1], pb.childs[1])
                                 }
                                 else -> {
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[0], p.b)
-                                    stkStack[depth++] = Dbvt.StkNN(p.a!!.childs[1], p.b)
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[0], pb)
+                                    stkStack[depth++] = Dbvt.StkNN(pa.childs[1], pb)
                                 }
                             }
                             else -> when {
-                                p.b!!.isInternal -> {
-                                    stkStack[depth++] = Dbvt.StkNN(p.a, p.b!!.childs[0])
-                                    stkStack[depth++] = Dbvt.StkNN(p.a, p.b!!.childs[1])
+                                pb.isInternal -> {
+                                    stkStack[depth++] = Dbvt.StkNN(pa, pb.childs[0])
+                                    stkStack[depth++] = Dbvt.StkNN(pa, pb.childs[1])
                                 }
-                                else -> callback.process(p.a!!, p.b!!)
+                                else -> callback.process(pa, pb)
                             }
                         }
                     }

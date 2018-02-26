@@ -93,7 +93,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
             invMass put field * inverseMass
         }
 
-    val gravity_ = Vec3()
+    val _gravity = Vec3()
     val gravityAcceleration = Vec3()
     val invInertiaLocal = Vec3()
     val totalForce = Vec3()
@@ -224,14 +224,14 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
 
     fun applyGravity() {
         if (isStaticOrKinematicObject) return
-        applyCentralForce(gravity_)
+        applyCentralForce(_gravity)
     }
 
     var gravity
         get() = gravityAcceleration
         set(value) {
             if (inverseMass != 0f)
-                gravity put value * (1f / inverseMass)
+                _gravity put value * (1f / inverseMass)
             gravityAcceleration put value
         }
 
@@ -290,7 +290,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         }
 
         //Fg = m * a
-        gravity_ put mass * gravityAcceleration
+        _gravity put mass * gravityAcceleration
 
         invInertiaLocal.put(
                 if (inertia.x != 0f) 1f / inertia.x else 0f,

@@ -35,11 +35,13 @@ import bullet.collision.broadphaseCollision.BroadphaseNativeTypes as Bnt
  *  separating normal.
  *  This idea was described by Gino van den Bergen in this forum topic
  *  http://www.bulletphysics.com/Bullet/phpBB3/viewtopic.php?f=4&t=288&p=888#p888 */
-class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper,
-                            body1Wrap: CollisionObjectWrapper, val solver: ConvexPenetrationDepthSolver,
-                            val numPerturbationIterations: Int, val minimumPointsPerturbationThreshold: Int) : ActivatingCollisionAlgorithm(ci, body0Wrap, body1Wrap) {
+class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgorithmConstructionInfo,
+                            body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper,
+                            val solver: ConvexPenetrationDepthSolver, val numPerturbationIterations: Int,
+                            val minimumPointsPerturbationThreshold: Int) : ActivatingCollisionAlgorithm(ci, body0Wrap, body1Wrap) {
 
-    val sepDistance = ConvexSeparatingDistanceUtil((body0Wrap.collisionShape as ConvexShape).angularMotionDisc,
+    val sepDistance = ConvexSeparatingDistanceUtil(
+            (body0Wrap.collisionShape as ConvexShape).angularMotionDisc,
             (body1Wrap.collisionShape as ConvexShape).angularMotionDisc).takeIf { USE_SEPDISTANCE_UTIL2 }
 
     val worldVertsB1 = ArrayList<Vec3>()
@@ -51,9 +53,11 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
     var disableCcd = false
 
     /** Convex-Convex collision algorithm   */
-    override fun processCollision(body0: CollisionObjectWrapper, body1: CollisionObjectWrapper, dispatchInfo: DispatcherInfo,
+    override fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo,
                                   resultOut: ManifoldResult) {
 
+        val body0 = body0Wrap
+        val body1 = body1Wrap
         if (manifold == null) {
             //swapped?
             manifold = dispatcher!!.getNewManifold(body0.collisionObject!!, body1.collisionObject!!)
@@ -69,7 +73,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
 
         val normalOnB = Vec3()
         val pointOnBWorld = Vec3()
-        if (DISABLE_CAPSULE_CAPSULE_COLLIDER) {
+        if (!DISABLE_CAPSULE_CAPSULE_COLLIDER) {
             if (min0.shapeType == Bnt.CAPSULE_SHAPE_PROXYTYPE && min1.shapeType == Bnt.CAPSULE_SHAPE_PROXYTYPE) {
                 //m_manifoldPtr->clearManifold();
                 val capsuleA = min0 as CapsuleShape
@@ -126,12 +130,14 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
             }
         }
 
-        if (USE_SEPDISTANCE_UTIL2 && dispatchInfo.useConvexConservativeDistanceUtil)
-            sepDistance!!.updateSeparatingDistance(body0.worldTransform, body1.worldTransform)
+        if (USE_SEPDISTANCE_UTIL2)
+            if(dispatchInfo.useConvexConservativeDistanceUtil)
+                sepDistance!!.updateSeparatingDistance(body0.worldTransform, body1.worldTransform)
 
-        val cond = if (USE_SEPDISTANCE_UTIL2) !dispatchInfo.useConvexConservativeDistanceUtil || sepDistance!!.separatingDistance <= 0f
-        else true
-
+        val cond = when(USE_SEPDISTANCE_UTIL2) {
+            true -> !dispatchInfo.useConvexConservativeDistanceUtil || sepDistance!!.separatingDistance <= 0f
+            else -> true
+        }
         if (cond) {
 
             val input = DiscreteCollisionDetectorInterface.ClosestPointInput()
@@ -141,9 +147,12 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
             gjkPairDetector.minkowskiA = min0
             gjkPairDetector.minkowskiB = min1
 
-            if (USE_SEPDISTANCE_UTIL2 && dispatchInfo.useConvexConservativeDistanceUtil)
-                input.maximumDistanceSquared = LARGE_FLOAT
-            else if (!USE_SEPDISTANCE_UTIL2) {
+            var `else` = !USE_SEPDISTANCE_UTIL2
+            if (USE_SEPDISTANCE_UTIL2)
+                if(dispatchInfo.useConvexConservativeDistanceUtil)
+                    input.maximumDistanceSquared = LARGE_FLOAT
+                else `else` = true
+            if (`else`) {
                 input.maximumDistanceSquared = min0.margin + min1.margin + manifold!!.contactBreakingThreshold + resultOut.closestPointDistanceThreshold
                 input.maximumDistanceSquared *= input.maximumDistanceSquared
             }
@@ -380,7 +389,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
             val ccd1 = GjkConvexCast(convex0, sphere1, voronoiSimplex)
             //ContinuousConvexCollision ccd(min0,min1,&voronoiSimplex,0);
             if (ccd1.calcTimeOfImpact(body0.getWorldTransform(), body0.getInterpolationWorldTransform(),
-                    body1.getWorldTransform(), body1.getInterpolationWorldTransform(), result)) {
+                            body1.getWorldTransform(), body1.getInterpolationWorldTransform(), result)) {
 
                 //store result.m_fraction in both bodies
 
@@ -402,7 +411,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
             val ccd1 = GjkConvexCast(sphere0, convex1, voronoiSimplex)
             //ContinuousConvexCollision ccd(min0,min1,&voronoiSimplex,0);
             if (ccd1.calcTimeOfImpact(body0.getWorldTransform(), body0.getInterpolationWorldTransform(),
-                    body1.getWorldTransform(), body1.getInterpolationWorldTransform(), result)) {
+                            body1.getWorldTransform(), body1.getInterpolationWorldTransform(), result)) {
 
                 //store result.m_fraction in both bodies
 
@@ -428,7 +437,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
         override fun createCollisionAlgorithm(info: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper,
                                               body1Wrap: CollisionObjectWrapper) =
 //          void* mem = info.dispatcher!!.allocateCollisionAlgorithm(sizeof(btConvexConvexAlgorithm))
-            ConvexConvexAlgorithm (info.manifold, info, body0Wrap, body1Wrap, solver, numPerturbationIterations, minimumPointsPerturbationThreshold)
+                ConvexConvexAlgorithm(info.manifold, info, body0Wrap, body1Wrap, solver, numPerturbationIterations, minimumPointsPerturbationThreshold)
     }
 
     class PerturbedContactResult(val originalManifoldResult: ManifoldResult, val transformA: Transform, val transformB: Transform,

@@ -15,8 +15,10 @@ subject to the following restrictions:
 
 package bullet.collision.broadphaseCollision
 
-import bullet.*
-import kotlin.collections.ArrayList
+import bullet.BT_PROFILE
+import bullet.has
+import bullet.linearMath.AlignedBroadphasePairArray
+import bullet.push
 
 var overlappingPairs = 0
 
@@ -41,9 +43,9 @@ interface OverlapFilterCallback {
  *  The HashedOverlappingPairCache and SortedOverlappingPairCache classes are two implementations.  */
 abstract class OverlappingPairCache : OverlappingPairCallback {
 
-    abstract val overlappingPairArray: ArrayList<BroadphasePair>
+    abstract val overlappingPairArray: AlignedBroadphasePairArray
 
-    abstract fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher)
+    abstract fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher?)
 
     val numOverlappingPairs get() = overlappingPairArray.size
 
@@ -91,7 +93,7 @@ abstract class OverlappingPairCache : OverlappingPairCallback {
 
 class HashedOverlappingPairCache : OverlappingPairCache() {
 
-    override var overlappingPairArray = arrayListOf(BroadphasePair(), BroadphasePair()) // initialAllocatedSize = 2
+    override val overlappingPairArray = AlignedBroadphasePairArray().apply { reserve(2) }
     override var overlapFilterCallback: OverlapFilterCallback? = null
 
     var hashTable = intArrayOf()
@@ -117,7 +119,7 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         val proxyId1 = _proxy0.uniqueId
         val proxyId2 = _proxy1.uniqueId
 
-        val hash = getHash(proxyId1, proxyId2) and (overlappingPairArray.size - 1)
+        val hash = getHash(proxyId1, proxyId2) and (overlappingPairArray.capacity - 1)
 
         val pair = internalFindPair(_proxy0, _proxy1, hash) ?: return null
 
@@ -132,8 +134,7 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         assert(pairIndex != -1)
 
         // Remove the pair from the hash table.
-        var index = hashTable[hash]
-        assert(index != NULL_PAIR)
+        var index = hashTable[hash] // assert implicit
 
         var previous = NULL_PAIR
         while (index != pairIndex) {
@@ -149,7 +150,7 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
 
         /** We now move the last pair into spot of the pair being removed.
          *  We need to fix the hash table indices to support the move.  */
-        val lastPairIndex = overlappingPairArray.lastIndex
+        val lastPairIndex = overlappingPairArray.size - 1
 
         ghostPairCallback?.removeOverlappingPair(_proxy0, _proxy1, dispatcher)
 
@@ -160,12 +161,11 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         }
 
         // Remove the last pair from the hash table.
-        val last = overlappingPairArray[lastPairIndex]
+        val last = overlappingPairArray[lastPairIndex]!!
         /* missing swap here too, Nat. */
-        val lastHash = getHash(last.proxy0!!.uniqueId, last.proxy1!!.uniqueId) and overlappingPairArray.lastIndex   // TODO check (m_overlappingPairArray.capacity()-1)
+        val lastHash = getHash(last.proxy0!!.uniqueId, last.proxy1!!.uniqueId) and (overlappingPairArray.capacity - 1)
 
-        index = hashTable[lastHash]
-        //assert(index != BT_NULL_PAIR) means no getOrElse
+        index = hashTable[lastHash] // assert implicit
 
         previous = NULL_PAIR
         while (index != lastPairIndex) {
@@ -202,7 +202,7 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         var i = 0
 //	printf("m_overlappingPairArray.size()=%d\n",m_overlappingPairArray.size());
         while (i < overlappingPairArray.size) {
-            val pair = overlappingPairArray[i]
+            val pair = overlappingPairArray[i]!!
             if (callback.processOverlap(pair)) {
                 removeOverlappingPair(pair.proxy0!!, pair.proxy1!!, dispatcher)
                 overlappingPairs--
@@ -210,10 +210,12 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         }
     }
 
-    override fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher) {
+    override fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher?) {
         pair.algorithm?.let {
-            dispatcher.freeCollisionAlgorithm(pair.algorithm)
-            pair.algorithm = null
+            if (dispatcher != null) {
+                dispatcher.freeCollisionAlgorithm(it)
+                pair.algorithm = null
+            }
         }
     }
 
@@ -231,18 +233,16 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         val proxyId1 = _proxy0.uniqueId
         val proxyId2 = _proxy1.uniqueId
 
-        val hash = getHash(proxyId1, proxyId2) and overlappingPairArray.lastIndex
+        val hash = getHash(proxyId1, proxyId2) and (overlappingPairArray.capacity - 1)
 
         if (hash >= hashTable.size) return null
 
-        var index = hashTable[hash]
-        while (index != NULL_PAIR && !equalsPair(overlappingPairArray[index], proxyId1, proxyId2)) {
+        var index = hashTable.getOrElse(hash, { NULL_PAIR })
+        while (index != NULL_PAIR && !equalsPair(overlappingPairArray[index]!!, proxyId1, proxyId2)) {
             index = next[index]
         }
 
-        if (index == NULL_PAIR) return null
-
-        return overlappingPairArray[index]
+        return overlappingPairArray[index].takeIf { index != NULL_PAIR }
     }
 
     val count get() = overlappingPairArray.size
@@ -260,44 +260,40 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         val proxyId1 = _proxy0.uniqueId
         val proxyId2 = _proxy1.uniqueId
 
-        val hash = getHash(proxyId1, proxyId2) and overlappingPairArray.lastIndex    // New hash value with new mask
+        var hash = getHash(proxyId1, proxyId2) and (overlappingPairArray.capacity - 1)    // New hash value with new mask
 
-        val pair = internalFindPair(proxy0, proxy1, hash)
+        var pair = internalFindPair(_proxy0, _proxy1, hash)
         if (pair != null)
             return pair
 
-        TODO()
-//        val count = overlappingPairArray.size
-//        val oldCapacity = m_overlappingPairArray . capacity ()
-//        void * mem = & m_overlappingPairArray . expandNonInitializing ()
-//
-//        //this is where we add an actual pair, so also call the 'ghost'
-//        if (m_ghostPairCallback)
-//            m_ghostPairCallback->addOverlappingPair(proxy0, proxy1)
-//
-//        int newCapacity = m_overlappingPairArray . capacity ()
-//
-//        if (oldCapacity < newCapacity) {
-//            growTables()
-//            //hash with new capacity
-//            hash = static_cast<int>(getHash(static_cast < unsigned int >(proxyId1), static_cast < unsigned int >(proxyId2)) &(m_overlappingPairArray.capacity() - 1))
-//        }
-//
-//        pair = new(mem) btBroadphasePair ( * proxy0, *proxy1)
-////	pair->m_pProxy0 = proxy0;
-////	pair->m_pProxy1 = proxy1;
-//        pair->m_algorithm = 0
-//        pair->m_internalTmpValue = 0
-//
-//
-//        m_next[count] = m_hashTable[hash]
-//        m_hashTable[hash] = count
-//
-//        return pair
+        val count = overlappingPairArray.size
+        val oldCapacity = overlappingPairArray.capacity
+        pair = BroadphasePair(_proxy0, _proxy1)
+        overlappingPairArray += pair
+
+        //this is where we add an actual pair, so also call the 'ghost'
+        ghostPairCallback?.addOverlappingPair(_proxy0, _proxy1)
+
+        val newCapacity = overlappingPairArray.capacity
+
+        if (oldCapacity < newCapacity) {
+            growTables()
+            // hash with new capacity
+            hash = getHash(proxyId1, proxyId2) and (overlappingPairArray.capacity - 1)
+        }
+
+//	pair->m_pProxy0 = proxy0;
+//	pair->m_pProxy1 = proxy1;
+
+        next[count] = hashTable[hash]
+        hashTable[hash] = count
+
+        return pair
     }
 
     fun growTables() {
-        val newCapacity = overlappingPairArray.size
+
+        val newCapacity = overlappingPairArray.capacity
 
         if (hashTable.size < newCapacity) {
             //grow hashtable and next table
@@ -307,10 +303,10 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
             next = IntArray(newCapacity, { NULL_PAIR })
 
             for (i in 0 until curHashtableSize) {
-                val pair = overlappingPairArray[i]
+                val pair = overlappingPairArray[i]!!
                 val proxyId1 = pair.proxy0!!.uniqueId
                 val proxyId2 = pair.proxy1!!.uniqueId
-                val hashValue = getHash(proxyId1, proxyId2) and overlappingPairArray.lastIndex    // New hash value with new mask
+                val hashValue = getHash(proxyId1, proxyId2) and (overlappingPairArray.capacity - 1)    // New hash value with new mask
                 next[i] = hashTable[hashValue]
                 hashTable[hashValue] = i
             }
@@ -351,14 +347,12 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
         val proxyId1 = proxy0.uniqueId
         val proxyId2 = proxy1.uniqueId
 
-        var index = hashTable[hash]
+        var index = hashTable.getOrElse(hash, { NULL_PAIR })
 
-        while (index != NULL_PAIR && !equalsPair(overlappingPairArray[index], proxyId1, proxyId2))
+        while (index != NULL_PAIR && !equalsPair(overlappingPairArray[index]!!, proxyId1, proxyId2))
             index = next[index]
 
-        if (index == NULL_PAIR) return null
-
-        return overlappingPairArray[index]
+        return overlappingPairArray[index].takeIf { index != NULL_PAIR }
     }
 
     override val hasDeferredRemoval get() = false
@@ -366,114 +360,113 @@ class HashedOverlappingPairCache : OverlappingPairCache() {
     override fun sortOverlappingPairs(dispatcher: Dispatcher) {
 
         // need to keep hashmap in sync with pair address, so rebuild all
-        val tmpPairs = ArrayList<BroadphasePair>()
+        val tmpPairs = AlignedBroadphasePairArray()
         var i = 0
         while (i < overlappingPairArray.size)
-            tmpPairs push overlappingPairArray[i]
+            tmpPairs += overlappingPairArray[i]!!
         i = 0
         while (i < tmpPairs.size)
-            removeOverlappingPair(tmpPairs[i].proxy0!!, tmpPairs[i].proxy1!!, dispatcher)
+            removeOverlappingPair(tmpPairs[i]!!.proxy0!!, tmpPairs[i]!!.proxy1!!, dispatcher)
         i = 0
-        while (i < next.size)
-            next[i] = NULL_PAIR
+        while (i < next.size) next[i] = NULL_PAIR
 
-        tmpPairs.sortWith(BroadphasePairSortPredicate)
+        tmpPairs quickSort ::BroadphasePairSortPredicate
         i = 0
         while (i < tmpPairs.size)
-            addOverlappingPair(tmpPairs[i].proxy0!!, tmpPairs[i].proxy1!!)
+            addOverlappingPair(tmpPairs[i]!!.proxy0!!, tmpPairs[i]!!.proxy1!!)
     }
 }
 
 
 /** SortedOverlappingPairCache maintains the objects with overlapping AABB
  *  Typically managed by the Broadphase, Axis3Sweep or SimpleBroadphase   */
-class SortedOverlappingPairCache : OverlappingPairCache() {
-
-    /** avoid brute-force finding all the time  */
-    override var overlappingPairArray = arrayListOf(BroadphasePair(), BroadphasePair()) // initialAllocatedSize = 2
-
-    /** during the dispatch, check that user doesn't destroy/create proxy   */
-    var blockedForChanges = false
-
-    /** by default, do the removal during the pair traversal    */
-    override var hasDeferredRemoval = true
-
-    /** if set, use the callback instead of the built in filter in needBroadphaseCollision  */
-    override var overlapFilterCallback: OverlapFilterCallback? = null
-
-    override var ghostPairCallback: OverlappingPairCallback? = null
-
-    override fun processAllOverlappingPairs(callback: OverlapCallback, dispatcher: Dispatcher) {
-        var i = 0
-        while (i < overlappingPairArray.size) {
-            val pair = overlappingPairArray[i]
-            if (callback.processOverlap(pair)) {
-                cleanOverlappingPair(pair, dispatcher)
-                pair.proxy0 = null
-                pair.proxy1 = null
-                overlappingPairArray.swapLastAt(i)
-                overlappingPairArray.pop()
-                overlappingPairs--
-            } else i++
-        }
-    }
-
-    override fun removeOverlappingPair(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy, dispatcher: Dispatcher): Any? {
-        if (!hasDeferredRemoval) {
-            val findPair = BroadphasePair(proxy0, proxy1)
-
-            val findIndex = overlappingPairArray.indexOf(findPair)
-            if (findIndex < overlappingPairArray.size) {
-                overlappingPairs--
-                val pair = overlappingPairArray[findIndex]
-                val userData = pair.internalInfo1
-                cleanOverlappingPair(pair, dispatcher)
-                ghostPairCallback?.removeOverlappingPair(proxy0, proxy1, dispatcher)
-
-                overlappingPairArray.swap(findIndex, overlappingPairArray.lastIndex)
-                overlappingPairArray.pop()
-                return userData
-            }
-        }
-        return null
-    }
-
-    override fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher) {
-        pair.algorithm?.let {
-            dispatcher.freeCollisionAlgorithm(pair.algorithm)
-            pair.algorithm = null
-            removePairs--
-        }
-    }
-
-    override fun addOverlappingPair(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy): BroadphasePair? {
-        //don't add overlap with own
-        assert(proxy0 !== proxy1)
-
-        if (!needsBroadphaseCollision(proxy0, proxy1)) return null
-
-        val pair = BroadphasePair(proxy0, proxy1)
-        overlappingPairArray.add(pair)
-
-        overlappingPairs++
-        addedPairs++
-
-        ghostPairCallback?.addOverlappingPair(proxy0, proxy1)
-        return pair
-    }
-
-    /** This findPair becomes really slow. Either sort the list to speedup the query, or use a different solution.
-     *  It is mainly used for Removing overlapping pairs. Removal could be delayed.
-     *  We could keep a linked list in each proxy, and store pair in one of the proxies (with lowest memory address)
-     *  Also we can use a 2D bitmap, which can be useful for a future GPU implementation    */
-    override fun findPair(proxy0:BroadphaseProxy,proxy1: BroadphaseProxy):BroadphasePair? {
-        if (!needsBroadphaseCollision(proxy0,proxy1)) return null
-
-        val tmpPair = BroadphasePair (proxy0,proxy1)
-        val findIndex = overlappingPairArray.indexOf(tmpPair)
-
-        return overlappingPairArray.getOrNull(findIndex)
-    }
-
-    override fun sortOverlappingPairs(dispatcher: Dispatcher) = Unit  //should already be sorted
-}
+//class SortedOverlappingPairCache : OverlappingPairCache() {
+//
+//    /** avoid brute-force finding all the time  */
+//    override var overlappingPairArray = arrayListOf(BroadphasePair(), BroadphasePair()) // initialAllocatedSize = 2
+//
+//    /** during the dispatch, check that user doesn't destroy/create proxy   */
+//    var blockedForChanges = false
+//
+//    /** by default, do the removal during the pair traversal    */
+//    override var hasDeferredRemoval = true
+//
+//    /** if set, use the callback instead of the built in filter in needBroadphaseCollision  */
+//    override var overlapFilterCallback: OverlapFilterCallback? = null
+//
+//    override var ghostPairCallback: OverlappingPairCallback? = null
+//
+//    override fun processAllOverlappingPairs(callback: OverlapCallback, dispatcher: Dispatcher) {
+//        var i = 0
+//        while (i < overlappingPairArray.size) {
+//            val pair = overlappingPairArray[i]
+//            if (callback.processOverlap(pair)) {
+//                cleanOverlappingPair(pair, dispatcher)
+//                pair.proxy0 = null
+//                pair.proxy1 = null
+//                overlappingPairArray.swapLastAt(i)
+//                overlappingPairArray.pop()
+//                overlappingPairs--
+//            } else i++
+//        }
+//    }
+//
+//    override fun removeOverlappingPair(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy, dispatcher: Dispatcher): Any? {
+//        if (!hasDeferredRemoval) {
+//            val findPair = BroadphasePair(proxy0, proxy1)
+//
+//            val findIndex = overlappingPairArray.indexOf(findPair)
+//            if (findIndex < overlappingPairArray.size) {
+//                overlappingPairs--
+//                val pair = overlappingPairArray[findIndex]
+//                val userData = pair.internalInfo1
+//                cleanOverlappingPair(pair, dispatcher)
+//                ghostPairCallback?.removeOverlappingPair(proxy0, proxy1, dispatcher)
+//
+//                overlappingPairArray.swap(findIndex, overlappingPairArray.lastIndex)
+//                overlappingPairArray.pop()
+//                return userData
+//            }
+//        }
+//        return null
+//    }
+//
+//    override fun cleanOverlappingPair(pair: BroadphasePair, dispatcher: Dispatcher) {
+//        pair.algorithm?.let {
+//            dispatcher.freeCollisionAlgorithm(pair.algorithm)
+//            pair.algorithm = null
+//            removePairs--
+//        }
+//    }
+//
+//    override fun addOverlappingPair(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy): BroadphasePair? {
+//        //don't add overlap with own
+//        assert(proxy0 !== proxy1)
+//
+//        if (!needsBroadphaseCollision(proxy0, proxy1)) return null
+//
+//        val pair = BroadphasePair(proxy0, proxy1)
+//        overlappingPairArray.add(pair)
+//
+//        overlappingPairs++
+//        addedPairs++
+//
+//        ghostPairCallback?.addOverlappingPair(proxy0, proxy1)
+//        return pair
+//    }
+//
+//    /** This findPair becomes really slow. Either sort the list to speedup the query, or use a different solution.
+//     *  It is mainly used for Removing overlapping pairs. Removal could be delayed.
+//     *  We could keep a linked list in each proxy, and store pair in one of the proxies (with lowest memory address)
+//     *  Also we can use a 2D bitmap, which can be useful for a future GPU implementation    */
+//    override fun findPair(proxy0: BroadphaseProxy, proxy1: BroadphaseProxy): BroadphasePair? {
+//        if (!needsBroadphaseCollision(proxy0, proxy1)) return null
+//
+//        val tmpPair = BroadphasePair(proxy0, proxy1)
+//        val findIndex = overlappingPairArray.indexOf(tmpPair)
+//
+//        return overlappingPairArray.getOrNull(findIndex)
+//    }
+//
+//    override fun sortOverlappingPairs(dispatcher: Dispatcher) = Unit  //should already be sorted
+//}

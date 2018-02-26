@@ -81,7 +81,7 @@ class Transform {
         m[15] = 1f
     }
 
-    fun invXform(inVec: Vec3) = basis.transpose() * (inVec - origin)
+    infix fun invXform(inVec: Vec3) = basis.transpose() * (inVec - origin)
 
     /** Set the rotational element by Quat  */
     infix fun setRotation(q: Quat) = basis.setRotation(q)

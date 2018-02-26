@@ -106,7 +106,7 @@ class GjkPairDetector(
         simplexSolver!!.reset()
 
         while (true) {
-
+            println("in")
             val seperatingAxisInA = (-cachedSeparatingAxis) * input.transformA.basis
             val seperatingAxisInB = cachedSeparatingAxis * input.transformB.basis
 
@@ -303,8 +303,7 @@ class GjkPairDetector(
             /*  todo: need to track down this EPA penetration solver degeneracy
                 the penetration solver reports penetration but the contact normal connecting the contact points
                 is pointing in the opposite direction, until then, detect the issue and revert the normal   */
-            var d1 = 0f
-            run {
+            val d1 = run {
                 val seperatingAxisInA = normalInB * input.transformA.basis
                 val seperatingAxisInB = -normalInB * input.transformB.basis
 
@@ -314,10 +313,9 @@ class GjkPairDetector(
                 val pWorld = localTransA(pInA)
                 val qWorld = localTransB(qInB)
                 val w = pWorld - qWorld
-                d1 = -normalInB dot w
+                -normalInB dot w
             }
-            var d0 = 0f
-            run {
+            val d0 = run {
                 val seperatingAxisInA = (-normalInB) * input.transformA.basis
                 val seperatingAxisInB = normalInB * input.transformB.basis
 
@@ -327,7 +325,7 @@ class GjkPairDetector(
                 val pWorld = localTransA(pInA)
                 val qWorld = localTransB(qInB)
                 val w = pWorld - qWorld
-                d0 = normalInB dot w
+                normalInB dot w
             }
             if (d1 > d0) {
                 lastUsedMethod = 10

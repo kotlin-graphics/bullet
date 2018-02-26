@@ -16,6 +16,7 @@ subject to the following restrictions:
 package bullet.collision.broadphaseCollision
 
 import bullet.collision.broadphaseCollision.BroadphaseNativeTypes.*
+import bullet.collision.collisionDispatch.CollisionObject
 import bullet.linearMath.Vec3
 
 /** Dispatcher uses these types
@@ -113,8 +114,9 @@ open class BroadphaseProxy {
 
     constructor()
 
-    constructor(aabbMin: Vec3, aabbMax: Vec3, userPtr: Any?, collisionFilterGroup: Int, collisionFilterMask: Int) {
-//    :m_clientObject(userPtr), TODO
+    // TODO check userPtr type (void *)
+    constructor(aabbMin: Vec3, aabbMax: Vec3, userPtr: CollisionObject, collisionFilterGroup: Int, collisionFilterMask: Int) {
+        clientObject = userPtr
         this.collisionFilterGroup = collisionFilterGroup
         this.collisionFilterMask = collisionFilterMask
         this.aabbMin put aabbMin
@@ -182,19 +184,13 @@ class BroadphasePair {
     override fun hashCode() = 31 * (proxy0?.hashCode() ?: 0) + (proxy1?.hashCode() ?: 0)
 }
 
-object BroadphasePairSortPredicate : Comparator<BroadphasePair> {
-    override fun compare(o1: BroadphasePair, o2: BroadphasePair): Int {
-        val uidA0 = o1.proxy0?.uniqueId ?: -1
-        val uidB0 = o2.proxy0?.uniqueId ?: -1
-        val uidA1 = o1.proxy1?.uniqueId ?: -1
-        val uidB1 = o2.proxy1?.uniqueId ?: -1
+fun BroadphasePairSortPredicate(a: BroadphasePair, b: BroadphasePair): Boolean {
+    val uidA0 = a.proxy0?.uniqueId ?: -1
+    val uidB0 = b.proxy0?.uniqueId ?: -1
+    val uidA1 = a.proxy1?.uniqueId ?: -1
+    val uidB1 = b.proxy1?.uniqueId ?: -1
 
-        return when {
-            uidA0 != uidB0 -> uidA0.compareTo(uidB0)
-            o1.proxy0 === o2.proxy0 && uidA1 != uidB1 -> uidA1.compareTo(uidB1)
-            o1.proxy0 === o2.proxy0 && o1.proxy1 == o2.proxy1 && System.identityHashCode(o1.algorithm) != System.identityHashCode(o2.algorithm) ->
-                System.identityHashCode(o1.algorithm).compareTo(System.identityHashCode(o2.algorithm))
-            else -> 0
-        }
-    }
+    return uidA0 > uidB0 ||
+            (a.proxy0 === b.proxy0 && uidA1 > uidB1) ||
+            (a.proxy0 === b.proxy0 && a.proxy1 == b.proxy1 && System.identityHashCode(a.algorithm) > System.identityHashCode(b.algorithm))  // TODO check
 }

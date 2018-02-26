@@ -25,6 +25,6 @@ open class ActivatingCollisionAlgorithm : CollisionAlgorithm {
 
     constructor(ci: CollisionAlgorithmConstructionInfo) : super()
 
-    constructor(ci: CollisionAlgorithmConstructionInfo, body0Wrap: CollisionObjectWrapper,
-                body1Wrap: CollisionObjectWrapper) : super()
+    constructor(ci: CollisionAlgorithmConstructionInfo,
+                body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper) : super(ci)
 }

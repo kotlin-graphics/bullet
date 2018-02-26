@@ -16,20 +16,22 @@ subject to the following restrictions:
 package bullet.dynamics.constraintSolver
 
 import bullet.*
-import bullet.dynamics.constraintSolver.SolverMode as Sm
+import bullet.collision.broadphaseCollision.Dispatcher
 import bullet.collision.collisionDispatch.CollisionObject
 import bullet.collision.narrowPhaseCollision.*
 import bullet.dynamics.dynamics.RigidBody
 import bullet.dynamics.dynamics.has
-import bullet.dynamics.dynamics.RigidBodyFlags as Rbf
-import bullet.collision.collisionDispatch.CollisionObject.AnisotropicFrictionFlags as Aff
-import bullet.collision.narrowPhaseCollision.ContactPointFlags as Cpf
 import bullet.linearMath.DebugDraw
 import bullet.linearMath.Vec3
 import bullet.linearMath.planeSpace1
 import bullet.linearMath.times
 import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlin.reflect.KMutableProperty0
+import bullet.collision.collisionDispatch.CollisionObject.AnisotropicFrictionFlags as Aff
+import bullet.collision.narrowPhaseCollision.ContactPointFlags as Cpf
+import bullet.dynamics.constraintSolver.SolverMode as Sm
+import bullet.dynamics.dynamics.RigidBodyFlags as Rbf
 
 typealias SingleConstraintRowSolver = (SolverBody, SolverBody, SolverConstraint) -> Float
 
@@ -44,9 +46,9 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
     val tmpSolverContactFrictionConstraintPool = ArrayList<SolverConstraint>()
     val tmpSolverContactRollingFrictionConstraintPool = ArrayList<SolverConstraint>()
 
-    val orderTmpConstraintPool = ArrayList<Int>()
-    val orderNonContactConstraintPool = ArrayList<Int>()
-    val orderFrictionConstraintPool = ArrayList<Int>()
+    var orderTmpConstraintPool = intArrayOf()
+    var orderNonContactConstraintPool = intArrayOf()
+    var orderFrictionConstraintPool = intArrayOf()
     val tmpConstraintSizesPool = ArrayList<TypedConstraint.ConstraintInfo1>()
     var maxOverrideNumSolverIterations = 0
     var fixedBodyId = 0
@@ -461,10 +463,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         return restitution * -relVel    // rest
     }
 
-    fun convertContacts(manifoldPtr: ArrayList<PersistentManifold>, numManifolds: Int, infoGlobal: ContactSolverInfo) {
+    fun convertContacts(manifoldPtr: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int, infoGlobal: ContactSolverInfo) {
 //			btCollisionObject* colObj0=0,*colObj1=0;
         for (i in 0 until numManifolds)
-            convertContact(manifoldPtr[i], infoGlobal)
+            convertContact(manifoldPtr[manifoldsPtr + i], infoGlobal)
     }
 
     fun convertContact(manifold: PersistentManifold, infoGlobal: ContactSolverInfo) {
@@ -496,7 +498,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
 
                 val frictionIndex = tmpSolverContactConstraintPool.size
                 val solverConstraint = SolverConstraint()
-                tmpSolverContactConstraintPool.add(solverConstraint)
+                tmpSolverContactConstraintPool += solverConstraint
                 solverConstraint.solverBodyIdA = solverBodyIdA
                 solverConstraint.solverBodyIdB = solverBodyIdB
 
@@ -632,14 +634,14 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
             if (rb != null && (rb.inverseMass != 0f || rb.isKinematicObject)) {
                 solverBodyIdA = tmpSolverBodyPool.size
                 val solverBody = SolverBody()
-                tmpSolverBodyPool.add(solverBody)
+                tmpSolverBodyPool += solverBody
                 initSolverBody(solverBody, body, timeStep)
                 body.companionId = solverBodyIdA
             } else {
                 if (fixedBodyId < 0) {
                     fixedBodyId = tmpSolverBodyPool.size
                     val fixedBody = SolverBody()
-                    tmpSolverBodyPool.add(fixedBody)
+                    tmpSolverBodyPool += fixedBody
                     initSolverBody(fixedBody, null, timeStep)
                 }
                 return fixedBodyId
@@ -651,7 +653,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
 
     fun initSolverBody(solverBody: SolverBody, collisionObject: CollisionObject?, timeStep: Float) {
 
-        val rb = if (collisionObject != null) RigidBody.upcast(collisionObject) else null
+        val rb = collisionObject?.let { RigidBody.upcast(it) }
 
         solverBody.deltaLinearVelocity put 0f
         solverBody.deltaAngularVelocity put 0f
@@ -681,9 +683,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         }
     }
 
-    fun solveGroupCacheFriendlySplitImpulseIterations(bodies: ArrayList<CollisionObject>, numBodies: Int, manifoldPtr: ArrayList<PersistentManifold>,
-                                                      numManifolds: Int, constraints: ArrayList<TypedConstraint>, numConstraints: Int,
-                                                      infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw) {
+    fun solveGroupCacheFriendlySplitImpulseIterations(bodies: ArrayList<CollisionObject>, numBodies: Int,
+                                                      manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                                                      constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                                                      infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?) {
 
         if (infoGlobal.splitImpulse) {
             for (iteration in 0 until infoGlobal.numIterations) {
@@ -761,8 +764,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         return 0f
     }
 
-    fun solveSingleIteration(iteration: Int, bodies: ArrayList<CollisionObject>, numBodies: Int, manifoldPtr: ArrayList<PersistentManifold>, numManifolds: Int,
-                             constraints: ArrayList<TypedConstraint>, numConstraints: Int, infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw): Float {
+    fun solveSingleIteration(iteration: Int, bodies: ArrayList<CollisionObject>, numBodies: Int,
+                             manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                             constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                             infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?): Float {
 
         var leastSquaresResidual = 0f
 
@@ -808,12 +813,12 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
 
         if (iteration < infoGlobal.numIterations) {
             for (j in 0 until numConstraints)
-                if (constraints[j].isEnabled) {
-                    val bodyAid = getOrInitSolverBody(constraints[j].rbA!!, infoGlobal.timeStep)
-                    val bodyBid = getOrInitSolverBody(constraints[j].rbB!!, infoGlobal.timeStep)
+                if (constraints[constraintsPtr + j].isEnabled) {
+                    val bodyAid = getOrInitSolverBody(constraints[constraintsPtr + j].rbA!!, infoGlobal.timeStep)
+                    val bodyBid = getOrInitSolverBody(constraints[constraintsPtr + j].rbB!!, infoGlobal.timeStep)
                     val bodyA = tmpSolverBodyPool[bodyAid]
                     val bodyB = tmpSolverBodyPool[bodyBid]
-                    constraints[j].solveConstraintObsolete(bodyA, bodyB, infoGlobal.timeStep)
+                    constraints[constraintsPtr + j].solveConstraintObsolete(bodyA, bodyB, infoGlobal.timeStep)
                 }
 
             // solve all contact constraints
@@ -913,8 +918,10 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         return leastSquaresResidual
     }
 
-    fun solveGroupCacheFriendlySetup(bodies: ArrayList<CollisionObject>, numBodies: Int, manifoldPtr: ArrayList<PersistentManifold>, numManifolds: Int,
-                                     constraints: ArrayList<TypedConstraint>, numConstraints: Int, infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw): Float {
+    fun solveGroupCacheFriendlySetup(bodies: ArrayList<CollisionObject>, numBodies: Int,
+                                     manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                                     constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                                     infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?): Float {
 
         fixedBodyId = -1
         BT_PROFILE("solveGroupCacheFriendlySetup")
@@ -961,7 +968,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         }
 
         for (j in 0 until numConstraints) {
-            val constraint = constraints[j]
+            val constraint = constraints[constraintsPtr + j]
             constraint.buildJacobian()
             constraint.appliedImpulse = 0f
         }
@@ -974,14 +981,14 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         //calculate the total number of contraint rows
         for (i in 0 until numConstraints) {
             val info1 = tmpConstraintSizesPool[i]
-            constraints[i].jointFeedback?.apply {
+            constraints[constraintsPtr + i].jointFeedback?.apply {
                 appliedForceBodyA put 0f
                 appliedTorqueBodyA put 0f
                 appliedForceBodyB put 0f
                 appliedTorqueBodyB put 0f
             }
-            if (constraints[i].isEnabled)
-                constraints[i].getInfo1(info1)
+            if (constraints[constraintsPtr + i].isEnabled)
+                constraints[constraintsPtr + i].getInfo1(info1)
             else {
                 info1.numConstraintRows = 0
                 info1.nub = 0
@@ -1001,7 +1008,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
 
                 assert(currentRow < totalNumRows)
 
-                val constraint = constraints[i]
+                val constraint = constraints[constraintsPtr + i]
                 val rbA = constraint.rbA
                 val rbB = constraint.rbB
 
@@ -1057,18 +1064,18 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
                     upperLimit = currentConstraintRow.upperLimit
                     numIterations = infoGlobal.numIterations
                 }
-                constraints[i] getInfo2 info2
+                constraints[constraintsPtr + i] getInfo2 info2
 
                 // finalize the constraint setup
                 for (j in 0 until info1.numConstraintRows) {
 
                     val solverConstraint = tmpSolverNonContactConstraintPool[currentRow + j]
 
-                    if (solverConstraint.upperLimit >= constraints[i].breakingImpulseThreshold)
-                        solverConstraint.upperLimit = constraints[i].breakingImpulseThreshold
+                    if (solverConstraint.upperLimit >= constraints[constraintsPtr + i].breakingImpulseThreshold)
+                        solverConstraint.upperLimit = constraints[constraintsPtr + i].breakingImpulseThreshold
 
-                    if (solverConstraint.lowerLimit <= -constraints[i].breakingImpulseThreshold)
-                        solverConstraint.lowerLimit = -constraints[i].breakingImpulseThreshold
+                    if (solverConstraint.lowerLimit <= -constraints[constraintsPtr + i].breakingImpulseThreshold)
+                        solverConstraint.lowerLimit = -constraints[constraintsPtr + i].breakingImpulseThreshold
 
                     solverConstraint.originalContactPoint = constraint
 
@@ -1116,7 +1123,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
             }
             currentRow += tmpConstraintSizesPool[i].numConstraintRows
         }
-        convertContacts(manifoldPtr, numManifolds, infoGlobal)
+        convertContacts(manifolds, manifoldsPtr, numManifolds, infoGlobal)
 
 //	btContactSolverInfo info = infoGlobal;
 
@@ -1125,10 +1132,12 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         val numFrictionPool = tmpSolverContactFrictionConstraintPool.size
 
         ///@todo: use stack allocator for such temporarily memory, same for solver bodies/constraints
-        orderNonContactConstraintPool resize numNonContactPool
-        orderTmpConstraintPool resize (if (infoGlobal.solverMode has Sm.USE_2_FRICTION_DIRECTIONS) numConstraintPool * 2 else numConstraintPool)
+        resize(::orderNonContactConstraintPool, numNonContactPool)
+        val newSize = numConstraintPool * if (infoGlobal.solverMode has Sm.USE_2_FRICTION_DIRECTIONS) 2 else 1
+        println(newSize)
+        resize(::orderTmpConstraintPool, newSize)
 
-        orderFrictionConstraintPool resize numFrictionPool
+        resize(::orderFrictionConstraintPool, numFrictionPool)
         for (i in 0 until numNonContactPool) orderNonContactConstraintPool[i] = i
         for (i in 0 until numConstraintPool) orderTmpConstraintPool[i] = i
         for (i in 0 until numFrictionPool) orderFrictionConstraintPool[i] = i
@@ -1136,18 +1145,20 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
     }
 
     fun solveGroupCacheFriendlyIterations(bodies: ArrayList<CollisionObject>, numBodies: Int,
-                                          manifoldPtr: ArrayList<PersistentManifold>, numManifolds: Int,
-                                          constraints: ArrayList<TypedConstraint>, numConstraints: Int,
-                                          infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw): Float {
+                                          manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                                          constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                                          infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?): Float {
 
         // this is a special step to resolve penetrations (just for contacts)
-        solveGroupCacheFriendlySplitImpulseIterations(bodies, numBodies, manifoldPtr, numManifolds, constraints, numConstraints, infoGlobal, debugDrawer)
+        solveGroupCacheFriendlySplitImpulseIterations(bodies, numBodies, manifolds, manifoldsPtr, numManifolds, constraints,
+                constraintsPtr, numConstraints, infoGlobal, debugDrawer)
 
         val maxIterations = if (maxOverrideNumSolverIterations > infoGlobal.numIterations) maxOverrideNumSolverIterations else infoGlobal.numIterations
 
         for (iteration in 0 until maxIterations) {  //for ( int iteration = maxIterations-1  ; iteration >= 0;iteration--)
-            val leastSquaresResidual = solveSingleIteration(iteration, bodies, numBodies, manifoldPtr, numManifolds, constraints, numConstraints, infoGlobal, debugDrawer)
-//            if (leastSquaresResidual <= infoGlobal.leastSquaresResidualThreshold || iteration >= (maxIterations - 1)) {
+            val leastSquaresResidual = solveSingleIteration(iteration, bodies, numBodies, manifolds, manifoldsPtr, numManifolds,
+                    constraints, constraintsPtr, numConstraints, infoGlobal, debugDrawer)
+//            if (leastSquaresResidual <= infoGlobal.leastSquaresResidualThreshold || iteration >= (maxIterations - 1)) { TODO
 //                #ifdef VERBOSE_RESIDUAL_PRINTF
 //                        printf("residual = %f at iteration #%d\n", m_leastSquaresResidual, iteration)
 //                #endif
@@ -1157,20 +1168,31 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         return 0f
     }
 
-    //
-//
-//    public :
-//
-//    BT_DECLARE_ALIGNED_ALLOCATOR()
-//
-//    btSequentialImpulseConstraintSolver()
-//    virtual ~btSequentialImpulseConstraintSolver()
-//
-//    virtual btScalar solveGroup(btCollisionObject** bodies,int numBodies,btPersistentManifold** manifold,int numManifolds,btTypedConstraint** constraints,int numConstraints,const btContactSolverInfo& info, btIDebugDraw* debugDrawer,btDispatcher* dispatcher)
-//
-//    ///clear internal cached data and reset random seed
-//    virtual    void    reset()
-//
+
+    override fun solveGroup(bodies: ArrayList<CollisionObject>, numBodies: Int,
+                            manifolds: ArrayList<PersistentManifold>, manifoldsPtr: Int, numManifolds: Int,
+                            constraints: ArrayList<TypedConstraint>, constraintsPtr: Int, numConstraints: Int,
+                            infoGlobal: ContactSolverInfo, debugDrawer: DebugDraw?, dispatcher: Dispatcher): Float {
+
+        BT_PROFILE("solveGroup")
+        //you need to provide at least some bodies
+
+        solveGroupCacheFriendlySetup(bodies, numBodies, manifolds, manifoldsPtr, numManifolds, constraints, constraintsPtr,
+                numConstraints, infoGlobal, debugDrawer)
+
+        solveGroupCacheFriendlyIterations(bodies, numBodies, manifolds, manifoldsPtr, numManifolds, constraints, constraintsPtr,
+                numConstraints, infoGlobal, debugDrawer)
+
+        solveGroupCacheFriendlyFinish(bodies, numBodies, infoGlobal)
+
+        return 0f
+    }
+
+
+    override fun reset() {
+        seed2 = 0
+    }
+
     fun rand2() = (1664525L * seed2 + 1013904223L) and 0xffffffff
 
     /** See ODE: adam's all-int straightforward(?) dRandInt (0..n-1)    */
@@ -1311,6 +1333,15 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
                 body2.internalApplyPushImpulse(c.contactNormal2 * body2.invMass, c.angularComponentB, deltaImpulse)
             }
             return deltaImpulse
+        }
+
+        fun resize(intArray: KMutableProperty0<IntArray>, newSize: Int) {
+            val array = intArray()
+            val size = array.size
+            if (size != newSize) {
+                val newArray = if (size < newSize) IntArray(newSize) { array.getOrElse(it) { 0 } } else IntArray(newSize) { array[it] }
+                intArray.set(newArray)
+            }
         }
     }
 }

@@ -17,13 +17,17 @@ package bullet.dynamics.dynamics
 
 //import bullet.collision.broadphaseCollision.BroadphaseProxy.CollisionFilterGroups as Cfg
 import bullet.*
-import bullet.collision.broadphaseCollision.*
+import bullet.collision.broadphaseCollision.BroadphaseInterface
+import bullet.collision.broadphaseCollision.BroadphaseProxy
+import bullet.collision.broadphaseCollision.Dispatcher
+import bullet.collision.broadphaseCollision.OverlappingPairCache
 import bullet.collision.collisionDispatch.*
 import bullet.collision.collisionShapes.SphereShape
 import bullet.collision.narrowPhaseCollision.ManifoldPoint
 import bullet.collision.narrowPhaseCollision.PersistentManifold
 import bullet.dynamics.constraintSolver.ConstraintSolver
 import bullet.dynamics.constraintSolver.ContactSolverInfo
+import bullet.dynamics.constraintSolver.SequentialImpulseConstraintSolver
 import bullet.dynamics.constraintSolver.TypedConstraint
 import bullet.linearMath.*
 import bullet.collision.broadphaseCollision.BroadphaseProxy.CollisionFilterGroups as Cfg
@@ -32,26 +36,29 @@ import bullet.collision.broadphaseCollision.BroadphaseProxy.CollisionFilterGroup
  *  CcdPhysicsEnvironment/CcdPhysicsController  */
 class DiscreteDynamicsWorld
 /** this DiscreteDynamicsWorld constructor gets created objects from the user, and will not delete those */
-constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintSolver: ConstraintSolver,
+constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintSolver: ConstraintSolver?,
             collisionConfiguration: CollisionConfiguration) : DynamicsWorld(dispatcher, pairCache, collisionConfiguration) {
 
+    var ownsConstraintSolver = false
     override var constraintSolver = constraintSolver
+            ?: SequentialImpulseConstraintSolver().also { ownsConstraintSolver = true }
         set(value) {
             ownsConstraintSolver = false
             field = value
-            solverIslandCallback!!.solver = value
+            solverIslandCallback.solver = value
         }
 
     val sortedConstraints = ArrayList<TypedConstraint>()
-    var solverIslandCallback: InplaceSolverIslandCallback? = null
+    var solverIslandCallback = InplaceSolverIslandCallback(this.constraintSolver, dispatcher!!)
 
-    var islandManager: SimulationIslandManager? = null
+    var islandManager = SimulationIslandManager()
+    var ownsIslandManager = true
 
     val constraints = ArrayList<TypedConstraint>()
 
-    var nonStaticRigidBodies = ArrayList<RigidBody>()
+    val nonStaticRigidBodies = ArrayList<RigidBody>()
 
-    override var gravity = Vec3()
+    override var gravity = Vec3(0, -10, 0)
         set(value) {
             field put value
             nonStaticRigidBodies.filter { it.isActive && it.rigidbodyFlags hasnt RigidBodyFlags.DISABLE_WORLD_GRAVITY }
@@ -63,8 +70,6 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     var fixedTimeStep = 0f
     //for variable timesteps
 
-    var ownsIslandManager = false
-    var ownsConstraintSolver = false
     var synchronizeAllMotionStates = false
     var applySpeculativeContactRestitution = false
 
@@ -72,7 +77,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
 
     var profileTimings = 0
 
-    var latencyMotionStateInterpolation = false
+    var latencyMotionStateInterpolation = true
 
     val predictiveManifolds = ArrayList<PersistentManifold>()
     /** used to synchronize threads creating predictive contacts    */
@@ -196,7 +201,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
 
     fun calculateSimulationIslands() {
         BT_PROFILE("calculateSimulationIslands")
-        islandManager!!.updateActivationState(this, dispatcher!!)
+        islandManager.updateActivationState(this, dispatcher!!)
 
         //merge islands based on speculative contact manifolds too
         predictiveManifolds.forEach {
@@ -204,16 +209,16 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
             val colObj1 = it.body1
 
             if (colObj0 != null && !colObj0.isStaticOrKinematicObject && colObj1 != null && !colObj1.isStaticOrKinematicObject)
-                islandManager!!.unionFind.unite(colObj0.islandTag, colObj1.islandTag)
+                islandManager.unionFind.unite(colObj0.islandTag, colObj1.islandTag)
         }
         constraints.filter { it.isEnabled }.forEach {
             val colObj0 = it.rbA
             val colObj1 = it.rbB
             if (colObj0 != null && !colObj0.isStaticOrKinematicObject && colObj1 != null && !colObj1.isStaticOrKinematicObject)
-                islandManager!!.unionFind.unite(colObj0.islandTag, colObj1.islandTag)
+                islandManager.unionFind.unite(colObj0.islandTag, colObj1.islandTag)
         }
         //Store the island id in each body
-        islandManager!!.storeIslandActivationState(this)
+        islandManager.storeIslandActivationState(this)
     }
 
     fun solveConstraints(solverInfo: ContactSolverInfo) {
@@ -225,12 +230,12 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
         sortedConstraints.sortWith(SortConstraintOnIslandPredicate)
         val constraintsPtr = sortedConstraints.takeIf { numConstraints != 0 }
 
-        solverIslandCallback!!.setup(solverInfo, constraintsPtr!!, sortedConstraints.size, debugDrawer!!)
+        solverIslandCallback.setup(solverInfo, constraintsPtr, sortedConstraints.size, debugDrawer)
         constraintSolver.prepareSolve(numCollisionObjects, dispatcher!!.numManifolds)
         // solve all the constraints for this island
-        islandManager!!.buildAndProcessIslands(dispatcher!!, this, solverIslandCallback!!)
-        solverIslandCallback!!.processConstraints()
-        constraintSolver.allSolved(solverInfo, debugDrawer!!)
+        islandManager.buildAndProcessIslands(dispatcher!!, this, solverIslandCallback)
+        solverIslandCallback.processConstraints()
+        constraintSolver.allSolved(solverInfo, debugDrawer)
     }
 
     fun updateActivationState(timeStep: Float) {
@@ -299,7 +304,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     fun releasePredictiveContacts() {
-        BT_PROFILE( "release predictive contact manifolds" )
+        BT_PROFILE("release predictive contact manifolds")
         predictiveManifolds.forEach(dispatcher!!::releaseManifold)
         predictiveManifolds.clear()
     }
@@ -461,7 +466,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
             for (it in collisionObjects)
                 RigidBody.upcast(it)?.let { synchronizeSingleMotionState(it) }
         //iterate over all active rigid bodies
-        else nonStaticRigidBodies.filter { it.isActive }.forEach { synchronizeSingleMotionState(it) }
+        else nonStaticRigidBodies.filter { it.isActive }.forEach(::synchronizeSingleMotionState)
     }
 
     /** this can be useful to synchronize a single rigid body -> graphics object */
@@ -506,10 +511,24 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
     }
 
     override fun addRigidBody(body: RigidBody) {
-        val isDynamic = !body.isStaticObject && !body.isKinematicObject
-        val collisionFilterGroup = if (isDynamic) Cfg.DefaultFilter else Cfg.StaticFilter
-        val collisionFilterMask = if (isDynamic) Cfg.AllFilter.i else Cfg.AllFilter xor Cfg.StaticFilter
-        addRigidBody(body, collisionFilterGroup.i, collisionFilterMask)
+
+        if (!body.isStaticOrKinematicObject && body.rigidbodyFlags hasnt RigidBodyFlags.DISABLE_WORLD_GRAVITY)
+            body.gravity = gravity
+
+        if (body.collisionShape != null) {
+            if (!body.isStaticObject)
+                nonStaticRigidBodies += body
+            else
+                body.activationState = ISLAND_SLEEPING
+
+            val isDynamic = !body.isStaticObject && !body.isKinematicObject
+            val collisionFilterGroup = if (isDynamic) Cfg.DefaultFilter else Cfg.StaticFilter
+            val collisionFilterMask =
+                    if (isDynamic) Cfg.AllFilter.i
+                    else Cfg.AllFilter.i xor Cfg.StaticFilter.i
+
+            addCollisionObject(body, collisionFilterGroup.i, collisionFilterMask)
+        }
     }
 
     override fun addRigidBody(body: RigidBody, group: Int, mask: Int) {
@@ -856,21 +875,20 @@ class InplaceSolverIslandCallback(var solver: ConstraintSolver, val dispatcher: 
     val manifolds = ArrayList<PersistentManifold>()
     val constraints = ArrayList<TypedConstraint>()
 
-    fun setup(solverInfo: ContactSolverInfo, sortedConstraints: ArrayList<TypedConstraint>, numConstraints: Int,
-              debugDrawer: DebugDraw) {
-//        assert(solverInfo != null)
+    fun setup(solverInfo: ContactSolverInfo, sortedConstraints: ArrayList<TypedConstraint>?, numConstraints: Int, debugDrawer: DebugDraw?) {
         this.solverInfo = solverInfo
-        with(this.sortedConstraints) { clear(); addAll(sortedConstraints) }
+        this.sortedConstraints.clear()
+        sortedConstraints?.let { this.sortedConstraints += it }
         this.numConstraints = numConstraints
         this.debugDrawer = debugDrawer
     }
 
-    override fun processIsland(bodies: ArrayList<CollisionObject>, numBodies: Int, manifolds: MutableList<PersistentManifold>,
-                               numManifolds: Int, islandId: Int) {
+    override fun processIsland(bodies: ArrayList<CollisionObject>, numBodies: Int, manifolds: ArrayList<PersistentManifold>,
+                               manifoldsPtr: Int, numManifolds: Int, islandId: Int) {
         if (islandId < 0)
         ///we don't split islands, so all constraints/contact manifolds/bodies are passed into the solver regardless the island id
-            solver.solveGroup(bodies, numBodies, manifolds, numManifolds, sortedConstraints, numConstraints, solverInfo!!,
-                    debugDrawer!!, dispatcher)
+            solver.solveGroup(bodies, numBodies, manifolds, manifoldsPtr, numManifolds, sortedConstraints, 0, numConstraints,
+                    solverInfo!!, debugDrawer, dispatcher)
         else {
             // also add all non-contact constraints/joints for this island
             var startConstraint = 0
@@ -891,13 +909,12 @@ class InplaceSolverIslandCallback(var solver: ConstraintSolver, val dispatcher: 
                 i++
             }
             if (solverInfo!!.minimumSolverBatchSize <= 1)
-                solver.solveGroup(bodies, numBodies, manifolds, numManifolds,
-                        sortedConstraints.subList(startConstraint, sortedConstraints.size), numCurConstraints, solverInfo!!,
-                        debugDrawer!!, dispatcher)
+                solver.solveGroup(bodies, numBodies, manifolds, manifoldsPtr, numManifolds, sortedConstraints, startConstraint,
+                        numCurConstraints, solverInfo!!, debugDrawer, dispatcher)
             else {
-                for (j in 0 until numBodies) bodies.add(bodies[j])
-                for (j in 0 until numManifolds) manifolds.add(manifolds[j])
-                for (j in 0 until numCurConstraints) constraints.add(sortedConstraints[startConstraint + j])
+                for (j in 0 until numBodies) this.bodies += bodies[j]
+                for (j in 0 until numManifolds) this.manifolds += manifolds[manifoldsPtr + j]
+                for (j in 0 until numCurConstraints) this.constraints += sortedConstraints[startConstraint + j]
                 if ((constraints.size + manifolds.size) > solverInfo!!.minimumSolverBatchSize)
                     processConstraints()
                 else println("deferred")
@@ -906,8 +923,8 @@ class InplaceSolverIslandCallback(var solver: ConstraintSolver, val dispatcher: 
     }
 
     fun processConstraints() {
-        solver.solveGroup(bodies, bodies.size, manifolds, manifolds.size, constraints, constraints.size, solverInfo!!, debugDrawer!!,
-                dispatcher)
+        solver.solveGroup(bodies, bodies.size, manifolds, 0, manifolds.size, constraints, 0, constraints.size,
+                solverInfo!!, debugDrawer, dispatcher)
         bodies.clear()
         manifolds.clear()
         constraints.clear()

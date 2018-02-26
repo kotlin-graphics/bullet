@@ -57,19 +57,19 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
     }
 
     override fun addContactPoint(normalOnBInWorld: Vec3, pointInWorld: Vec3, depth: Float) {
-        val manifoldPtr = manifold!!
+        val manifold = manifold!!
         val body0Wrap = body0Wrap!!
         val body1Wrap = body1Wrap!!
         val co0 = body0Wrap.collisionObject!!
-        val co1 = body0Wrap.collisionObject!!
+        val co1 = body1Wrap.collisionObject!!
         //order in manifold needs to match
 
-        if (depth > manifoldPtr.contactBreakingThreshold)
+        if (depth > manifold.contactBreakingThreshold)
 //	if (depth > m_manifoldPtr->getContactProcessingThreshold())
             return
 
-        val isSwapped = manifoldPtr.body0 !== body0Wrap.collisionObject
-        val isNewCollision = manifoldPtr.numContacts == 0
+        val isSwapped = manifold.body0 !== body0Wrap.collisionObject
+        val isNewCollision = manifold.numContacts == 0
 
         val pointA = pointInWorld + normalOnBInWorld * depth
 
@@ -77,18 +77,18 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         val localB: Vec3
 
         if (isSwapped) {
-            localA = co1.getWorldTransform().invXform(pointA)
-            localB = co0.getWorldTransform().invXform(pointInWorld)
+            localA = co1.getWorldTransform() invXform pointA
+            localB = co0.getWorldTransform() invXform pointInWorld
         } else {
-            localA = co0.getWorldTransform().invXform(pointA)
-            localB = co1.getWorldTransform().invXform(pointInWorld)
+            localA = co0.getWorldTransform() invXform pointA
+            localB = co1.getWorldTransform() invXform pointInWorld
         }
 
         val newPt = ManifoldPoint(localA, localB, normalOnBInWorld, depth)
         newPt.positionWorldOnA(pointA)
         newPt.positionWorldOnB(pointInWorld)
 
-        var insertIndex = manifoldPtr.getCacheEntry(newPt)
+        var insertIndex = manifold.getCacheEntry(newPt)
 
         newPt.combinedFriction = calculateCombinedFriction(co0, co1)
         newPt.combinedRestitution = calculateCombinedRestitution(co0, co1)
@@ -121,9 +121,9 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
         ///@todo, check this for any side effects
         if (insertIndex >= 0)
         //const btManifoldPoint& oldPoint = m_manifoldPtr->getContactPoint(insertIndex);
-            manifoldPtr.replaceContactPoint(newPt, insertIndex)
+            manifold.replaceContactPoint(newPt, insertIndex)
         else
-            insertIndex = manifoldPtr.addManifoldPoint(newPt)
+            insertIndex = manifold.addManifoldPoint(newPt)
 
         //User can override friction and/or restitution
         contactAddedCallback?.let {
@@ -132,10 +132,10 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
                 //experimental feature info, for per-triangle material etc.
                 val obj0Wrap = if (isSwapped) body1Wrap else body0Wrap
                 val obj1Wrap = if (isSwapped) body0Wrap else body1Wrap
-                it(manifoldPtr.getContactPoint(insertIndex), obj0Wrap, newPt.partId0, newPt.index0, obj1Wrap, newPt.partId1, newPt.index1)
+                it(manifold.getContactPoint(insertIndex), obj0Wrap, newPt.partId0, newPt.index0, obj1Wrap, newPt.partId1, newPt.index1)
             }
         }
-        gContactStartedCallback?.let { if (isNewCollision) it(manifoldPtr) }
+        gContactStartedCallback?.let { if (isNewCollision) it(manifold) }
     }
 
     fun refreshContactPoints() {

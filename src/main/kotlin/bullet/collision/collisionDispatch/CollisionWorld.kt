@@ -152,7 +152,10 @@ open class CollisionWorld
 
     /** The computeOverlappingPairs is usually already called by performDiscreteCollisionDetection (or stepSimulation)
      *  it can be useful to use if you perform ray tests without collision detection/simulation */
-    fun computeOverlappingPairs() = broadphasePairCache.calculateOverlappingPairs(dispatcher!!)
+    fun computeOverlappingPairs() {
+        BT_PROFILE("calculateOverlappingPairs")
+        broadphasePairCache.calculateOverlappingPairs(dispatcher!!)
+    }
 
     open fun debugDrawWorld() {
 

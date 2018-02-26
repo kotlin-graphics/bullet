@@ -89,9 +89,9 @@ class VoronoiSimplexSolver {
     fun removeVertex(index: Int) {
         assert(numVertices > 0)
         numVertices--
-        simplexVectorW[index] = simplexVectorW[numVertices]
-        simplexPointsP[index] = simplexPointsP[numVertices]
-        simplexPointsQ[index] = simplexPointsQ[numVertices]
+        simplexVectorW[index] put simplexVectorW[numVertices]
+        simplexPointsP[index] put simplexPointsP[numVertices]
+        simplexPointsQ[index] put simplexPointsQ[numVertices]
     }
 
     fun reduceVertices(usedVerts: UsageBitfield) {
@@ -103,122 +103,123 @@ class VoronoiSimplexSolver {
 
     fun updateClosestVectorAndPoints(): Boolean {
 
-        if (!needsUpdate) return cachedValidClosest
+        if (needsUpdate) {
 
-        cachedBC.reset()
+            cachedBC.reset()
 
-        needsUpdate = false
+            needsUpdate = false
 
-        when (numVertices) {
-            0 -> cachedValidClosest = false
-            1 -> {
-                cachedP1 put simplexPointsP[0]
-                cachedP2 put simplexPointsQ[0]
-                //== m_simplexVectorW[0]
-                cachedV = cachedP1 - cachedP2
-                cachedBC.reset()
-                cachedBC.setBarycentricCoordinates(1f, 0f, 0f, 0f)
-                cachedValidClosest = cachedBC.isValid
-            }
-            2 -> {
-                //closest point origin from line segment
-                val from = simplexVectorW[0]
-                val to = simplexVectorW[1]
-
-                val p = Vec3()
-                val diff = p - from
-                val v = to - from
-                var t = v dot diff
-
-                if (t > 0) {
-                    val dotVV = v dot v
-                    if (t < dotVV) {
-                        t /= dotVV
-                        diff -= t * v
-                        cachedBC.usedVertices.usedVertexA = true
-                        cachedBC.usedVertices.usedVertexB = true
-                    } else {
-                        t = 1f
-                        diff -= v
-                        //reduce to 1 point
-                        cachedBC.usedVertices.usedVertexB = true
-                    }
-                } else {
-                    t = 0f
-                    //reduce to 1 point
-                    cachedBC.usedVertices.usedVertexA = true
+            when (numVertices) {
+                0 -> cachedValidClosest = false
+                1 -> {
+                    cachedP1 put simplexPointsP[0]
+                    cachedP2 put simplexPointsQ[0]
+                    //== m_simplexVectorW[0]
+                    cachedV = cachedP1 - cachedP2
+                    cachedBC.reset()
+                    cachedBC.setBarycentricCoordinates(1f, 0f, 0f, 0f)
+                    cachedValidClosest = cachedBC.isValid
                 }
-                cachedBC.setBarycentricCoordinates(1 - t, t)
-                val nearest = from + t * v
+                2 -> {
+                    //closest point origin from line segment
+                    val from = simplexVectorW[0]
+                    val to = simplexVectorW[1]
 
-                cachedP1 = simplexPointsP[0] + t * (simplexPointsP[1] - simplexPointsP[0])
-                cachedP2 = simplexPointsQ[0] + t * (simplexPointsQ[1] - simplexPointsQ[0])
-                cachedV = cachedP1 - cachedP2
+                    val p = Vec3()
+                    val diff = p - from
+                    val v = to - from
+                    var t = v dot diff
 
-                reduceVertices(cachedBC.usedVertices)
+                    if (t > 0) {
+                        val dotVV = v dot v
+                        if (t < dotVV) {
+                            t /= dotVV
+                            diff -= t * v
+                            cachedBC.usedVertices.usedVertexA = true
+                            cachedBC.usedVertices.usedVertexB = true
+                        } else {
+                            t = 1f
+                            diff -= v
+                            //reduce to 1 point
+                            cachedBC.usedVertices.usedVertexB = true
+                        }
+                    } else {
+                        t = 0f
+                        //reduce to 1 point
+                        cachedBC.usedVertices.usedVertexA = true
+                    }
+                    cachedBC.setBarycentricCoordinates(1 - t, t)
+                    val nearest = from + t * v
 
-                cachedValidClosest = cachedBC.isValid
-            }
-            3 -> {
-                //closest point origin from triangle
-                val p = Vec3()
+                    cachedP1 = simplexPointsP[0] + t * (simplexPointsP[1] - simplexPointsP[0])
+                    cachedP2 = simplexPointsQ[0] + t * (simplexPointsQ[1] - simplexPointsQ[0])
+                    cachedV = cachedP1 - cachedP2
 
-                val a = Vec3(simplexVectorW[0])
-                val b = Vec3(simplexVectorW[1])
-                val c = Vec3(simplexVectorW[2])
+                    reduceVertices(cachedBC.usedVertices)
 
-                closestPtPointTriangle(p, a, b, c, cachedBC)
-                cachedP1 = simplexPointsP[0] * cachedBC.barycentricCoords[0] +
-                        simplexPointsP[1] * cachedBC.barycentricCoords[1] +
-                        simplexPointsP[2] * cachedBC.barycentricCoords[2]
+                    cachedValidClosest = cachedBC.isValid
+                }
+                3 -> {
+                    //closest point origin from triangle
+                    val p = Vec3()
 
-                cachedP2 = simplexPointsQ[0] * cachedBC.barycentricCoords[0] +
-                        simplexPointsQ[1] * cachedBC.barycentricCoords[1] +
-                        simplexPointsQ[2] * cachedBC.barycentricCoords[2]
+                    val a = simplexVectorW[0]
+                    val b = simplexVectorW[1]
+                    val c = simplexVectorW[2]
 
-                cachedV = cachedP1 - cachedP2
-
-                reduceVertices(cachedBC.usedVertices)
-                cachedValidClosest = cachedBC.isValid
-            }
-            4 -> {
-                val p = Vec3()
-
-                val a = Vec3(simplexVectorW[0])
-                val b = Vec3(simplexVectorW[1])
-                val c = Vec3(simplexVectorW[2])
-                val d = Vec3(simplexVectorW[3])
-
-                if (closestPtPointTetrahedron(p, a, b, c, d, cachedBC)) {   // has separation
-
+                    closestPtPointTriangle(p, a, b, c, cachedBC)
                     cachedP1 = simplexPointsP[0] * cachedBC.barycentricCoords[0] +
                             simplexPointsP[1] * cachedBC.barycentricCoords[1] +
-                            simplexPointsP[2] * cachedBC.barycentricCoords[2] +
-                            simplexPointsP[3] * cachedBC.barycentricCoords[3]
+                            simplexPointsP[2] * cachedBC.barycentricCoords[2]
 
                     cachedP2 = simplexPointsQ[0] * cachedBC.barycentricCoords[0] +
                             simplexPointsQ[1] * cachedBC.barycentricCoords[1] +
-                            simplexPointsQ[2] * cachedBC.barycentricCoords[2] +
-                            simplexPointsQ[3] * cachedBC.barycentricCoords[3]
+                            simplexPointsQ[2] * cachedBC.barycentricCoords[2]
 
                     cachedV = cachedP1 - cachedP2
+
                     reduceVertices(cachedBC.usedVertices)
-                } else {
+                    cachedValidClosest = cachedBC.isValid
+                }
+                4 -> {
+                    val p = Vec3()
+
+                    val a = simplexVectorW[0]
+                    val b = simplexVectorW[1]
+                    val c = simplexVectorW[2]
+                    val d = simplexVectorW[3]
+
+                    if (closestPtPointTetrahedron(p, a, b, c, d, cachedBC)) {   // has separation
+
+                        cachedP1 = simplexPointsP[0] * cachedBC.barycentricCoords[0] +
+                                simplexPointsP[1] * cachedBC.barycentricCoords[1] +
+                                simplexPointsP[2] * cachedBC.barycentricCoords[2] +
+                                simplexPointsP[3] * cachedBC.barycentricCoords[3]
+
+                        cachedP2 = simplexPointsQ[0] * cachedBC.barycentricCoords[0] +
+                                simplexPointsQ[1] * cachedBC.barycentricCoords[1] +
+                                simplexPointsQ[2] * cachedBC.barycentricCoords[2] +
+                                simplexPointsQ[3] * cachedBC.barycentricCoords[3]
+
+                        cachedV = cachedP1 - cachedP2
+                        reduceVertices(cachedBC.usedVertices)
+                    } else {
 //					printf("sub distance got penetration\n");
 
-                    if (cachedBC.degenerate)
-                        cachedValidClosest = false
-                    else {
-                        cachedValidClosest = true
-                        //degenerate case == false, penetration = true + zero
-                        cachedV put 0f
+                        if (cachedBC.degenerate)
+                            cachedValidClosest = false
+                        else {
+                            cachedValidClosest = true
+                            //degenerate case == false, penetration = true + zero
+                            cachedV put 0f
+                        }
                     }
-                }
-                cachedValidClosest = cachedBC.isValid
+                    cachedValidClosest = cachedBC.isValid
 
-                //closest point origin from tetrahedron
+                    //closest point origin from tetrahedron
+                }
+                else -> cachedValidClosest = false
             }
-            else -> cachedValidClosest = false
         }
         return cachedValidClosest
     }
@@ -471,12 +472,12 @@ class VoronoiSimplexSolver {
 
     /** add a vertex    */
     fun addVertex(w: Vec3, p: Vec3, q: Vec3) {
-        lastW = w
+        lastW put w
         needsUpdate = true
 
-        simplexVectorW[numVertices] = w
-        simplexPointsP[numVertices] = p
-        simplexPointsQ[numVertices] = q
+        simplexVectorW[numVertices] put w
+        simplexPointsP[numVertices] put p
+        simplexPointsQ[numVertices] put q
 
         numVertices++
     }
