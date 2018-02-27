@@ -124,15 +124,19 @@ class SimulationIslandManager {
         if (!splitIslands) {
             val manifold = dispatcher.internalManifoldPointer!!
             val maxNumManifolds = dispatcher.numManifolds
-            callback.processIsland(collisionObjects,  collisionObjects.size, manifold, 0, maxNumManifolds, -1)
+            callback.processIsland(collisionObjects, collisionObjects.size, manifold, 0, maxNumManifolds, -1)
         } else {
             /*  Sort manifolds, based on islands
                 Sort the vector using predicate and std::sort
                 std::sort(islandmanifold.begin(), islandmanifold.end(), btPersistentManifoldSortPredicate); */
             val numManifolds = islandManifold.size
-            //tried a radix sort, but quicksort/heapsort seems still faster
-            //@todo rewrite island management
-            islandManifold.sortWith(PersistentManifoldSortPredicate)
+            /*  Tried a radix sort, but quicksort/heapsort seems still faster
+                @todo rewrite island management
+
+                persistentManifoldSortPredicateDeterministic sorts contact manifolds based on islandid, but also based
+                on object0 unique id and object1 unique id  */
+            islandManifold.sortWith(persistentManifoldSortPredicateDeterministic)
+
             //now process all active islands (sets of manifolds for now)
             var startManifoldIndex = 0
             var endManifoldIndex = 1
@@ -233,6 +237,8 @@ class SimulationIslandManager {
         for (i in 0 until maxNumManifolds) {
             val manifold = dispatcher.getManifoldByIndexInternal(i)
 
+            if (manifold.numContacts == 0) continue
+
             val colObj0 = manifold.body0
             val colObj1 = manifold.body1
             ///@todo: check sleeping conditions!
@@ -252,8 +258,15 @@ class SimulationIslandManager {
     }
 }
 
-private val PersistentManifold.islandId get() = if (body0!!.islandTag >= 0) body0!!.islandTag else body1!!.islandTag
+val PersistentManifold.islandId get() = if (body0!!.islandTag >= 0) body0!!.islandTag else body1!!.islandTag
 
-object PersistentManifoldSortPredicate : Comparator<PersistentManifold> {
-    override fun compare(o1: PersistentManifold, o2: PersistentManifold) = o1.islandId.compareTo(o2.islandId)
-}
+/** Performance considerations
+ *  The vararg version of compareValuesBy is not inlined in the bytecode meaning anonymous classes will be generated for
+ *  the lambdas. However, if the lambdas themselves don't capture state, singleton instances will be used instead of
+ *  instantiating the lambdas everytime.
+ *  As noted by Paul Woitaschek in the comments, comparing with multiple selectors will instantiate an array for the
+ *  vararg call everytime. You can't optimize this by extracting the array as it will be copied on every call.
+ *  What you can do, on the other hand, is extract the logic into a static comparator instance and reuse it:
+ *  https://stackoverflow.com/questions/33640864/how-to-sort-based-on-compare-multiple-values-in-kotlin     */
+val persistentManifoldSortPredicateDeterministic = compareBy<PersistentManifold>({ it.islandId },
+        { it.body0!!.broadphaseHandle!!.uniqueId }, { it.body1!!.broadphaseHandle!!.uniqueId })

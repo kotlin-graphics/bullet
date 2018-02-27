@@ -118,9 +118,9 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         if (optionalMotionState != null) optionalMotionState!!.getWorldTransform(worldTransform_)
         else worldTransform_ put constructionInfo.startWorldTransform
 
-        _interpolationWorldTransform put worldTransform_
-        _interpolationLinearVelocity put 0f
-        _interpolationAngularVelocity put 0f
+        interpolationWorldTransform_ put worldTransform_
+        interpolationLinearVelocity_ put 0f
+        interpolationAngularVelocity_ put 0f
 
         // moved to CollisionObject
         _friction = constructionInfo.friction
@@ -214,10 +214,10 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
             val linVel = Vec3()
             val angVel = Vec3()
 
-            TransformUtil.calculateVelocity(_interpolationWorldTransform, worldTransform_, timeStep, _linearVelocity, _angularVelocity)
-            _interpolationLinearVelocity put _linearVelocity
-            _interpolationAngularVelocity put _angularVelocity
-            _interpolationWorldTransform put worldTransform_
+            TransformUtil.calculateVelocity(interpolationWorldTransform_, worldTransform_, timeStep, _linearVelocity, _angularVelocity)
+            interpolationLinearVelocity_ put _linearVelocity
+            interpolationAngularVelocity_ put _angularVelocity
+            interpolationWorldTransform_ put worldTransform_
             //printf("angular = %f %f %f\n",m_angularVelocity.getX(),m_angularVelocity.getY(),m_angularVelocity.getZ());
         }
     }
@@ -313,9 +313,9 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     }
 
     fun setCenterOfMassTransform(xform: Transform) {
-        _interpolationWorldTransform put if (isKinematicObject) worldTransform_ else xform
-        _interpolationLinearVelocity put _linearVelocity
-        _interpolationAngularVelocity put _angularVelocity
+        interpolationWorldTransform_ put if (isKinematicObject) worldTransform_ else xform
+        interpolationLinearVelocity_ put _linearVelocity
+        interpolationAngularVelocity_ put _angularVelocity
         worldTransform_ put xform
         updateInertiaTensor()
     }

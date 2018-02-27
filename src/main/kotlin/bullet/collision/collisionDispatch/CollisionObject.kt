@@ -53,35 +53,35 @@ open class CollisionObject {
 
     /** interpolationWorldTransform is used for CCD and interpolation
      *  it can be either previous or future (predicted) transform   */
-    protected val _interpolationWorldTransform = Transform().apply { setIdentity() }
+    protected val interpolationWorldTransform_ = Transform().apply { setIdentity() }
 
     fun setInterpolationWorldTransform(trans: Transform) {
         updateRevision++
-        _interpolationWorldTransform put trans
+        interpolationWorldTransform_ put trans
     }
 
-    fun getInterpolationWorldTransform() = _interpolationWorldTransform
+    fun getInterpolationWorldTransform() = interpolationWorldTransform_
 
 
     /** those two are experimental: just added for bullet time effect, so you can still apply impulses (directly modifying
      *  velocities) without destroying the continuous interpolated motion (which uses this interpolation velocities)  */
-    protected val _interpolationLinearVelocity = Vec3()
+    protected val interpolationLinearVelocity_ = Vec3()
 
     fun setInterpolationLinearVelocity(linVel: Vec3) {
         updateRevision++
-        _interpolationLinearVelocity put linVel
+        interpolationLinearVelocity_ put linVel
     }
 
-    fun getInterpolationLinearVelocity() = _interpolationLinearVelocity
+    fun getInterpolationLinearVelocity() = interpolationLinearVelocity_
 
 
-    protected val _interpolationAngularVelocity = Vec3()
+    protected val interpolationAngularVelocity_ = Vec3()
     fun setInterpolationAngularVelocity(angVel: Vec3) {
         updateRevision++
-        _interpolationAngularVelocity put angVel
+        interpolationAngularVelocity_ put angVel
     }
 
-    fun getInterpolationAngularVelocity() = _interpolationAngularVelocity
+    fun getInterpolationAngularVelocity() = interpolationAngularVelocity_
 
 
     val anisotropicFriction = Vec3(1f)

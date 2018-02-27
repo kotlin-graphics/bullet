@@ -16,6 +16,7 @@ subject to the following restrictions:
 package bullet.collision.narrowPhaseCollision
 
 import bullet.collision.collisionDispatch.CollisionObject
+import bullet.collision.collisionDispatch.islandId
 import bullet.has
 import bullet.linearMath.Transform
 import bullet.linearMath.TypedObject
@@ -33,6 +34,7 @@ typealias ContactDestroyedCallback = (Any) -> Boolean
 typealias ContactProcessedCallback = (ManifoldPoint, Any?, Any?) -> Boolean
 typealias ContactStartedCallback = (PersistentManifold) -> Unit
 typealias ContactEndedCallback = (PersistentManifold) -> Unit
+
 var gContactBreakingThreshold = 0.02f
 var gContactDestroyedCallback: ContactDestroyedCallback? = null
 var gContactProcessedCallback: ContactProcessedCallback? = null
