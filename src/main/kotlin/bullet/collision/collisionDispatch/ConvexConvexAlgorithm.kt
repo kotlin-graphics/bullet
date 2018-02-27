@@ -454,7 +454,7 @@ class ConvexConvexAlgorithm(var manifold: PersistentManifold?, ci: CollisionAlgo
                 val endPtOrg = pointInWorld + normalOnBInWorld * depth
                 endPt = (unPerturbedTransform * transformA.inverse())(endPtOrg)
                 newDepth = (endPt - pointInWorld).dot(normalOnBInWorld)
-                startPt = endPt + normalOnBInWorld * newDepth
+                startPt = endPt - normalOnBInWorld * newDepth
             } else {
                 endPt = pointInWorld + normalOnBInWorld * depth
                 startPt = (unPerturbedTransform * transformB.inverse())(pointInWorld)
