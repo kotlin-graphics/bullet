@@ -135,7 +135,10 @@ class SimulationIslandManager {
 
                 persistentManifoldSortPredicateDeterministic sorts contact manifolds based on islandid, but also based
                 on object0 unique id and object1 unique id  */
-            islandManifold.sortWith(persistentManifoldSortPredicateDeterministic)
+            islandManifold.sortWith(when (collisionWorld.dispatchInfo.deterministicOverlappingPairs) {
+                true -> persistentManifoldSortPredicateDeterministic
+                else -> persistentManifoldSortPredicate
+            })
 
             //now process all active islands (sets of manifolds for now)
             var startManifoldIndex = 0
@@ -188,12 +191,12 @@ class SimulationIslandManager {
             unionfind, to make sure no-one uses it anymore         */
         unionFind.sortIslands()
         val numElem = unionFind.numElements
-        var endIslandIndex = 1
+        var endIslandIndex: Int
         var startIslandIndex = 0
         //update the sleeping state for bodies, if all are sleeping
         while (startIslandIndex < numElem) {
             val islandId = unionFind[startIslandIndex].id
-            var endIslandIndex = startIslandIndex + 1
+            endIslandIndex = startIslandIndex + 1
             while (endIslandIndex < numElem && unionFind[endIslandIndex].id == islandId)
                 endIslandIndex++
             //int numSleeping = 0;
@@ -237,7 +240,8 @@ class SimulationIslandManager {
         for (i in 0 until maxNumManifolds) {
             val manifold = dispatcher.getManifoldByIndexInternal(i)
 
-            if (manifold.numContacts == 0) continue
+            if (colWorld.dispatchInfo.deterministicOverlappingPairs && manifold.numContacts == 0)
+                continue
 
             val colObj0 = manifold.body0
             val colObj1 = manifold.body1
@@ -270,3 +274,6 @@ val PersistentManifold.islandId get() = if (body0!!.islandTag >= 0) body0!!.isla
  *  https://stackoverflow.com/questions/33640864/how-to-sort-based-on-compare-multiple-values-in-kotlin     */
 val persistentManifoldSortPredicateDeterministic = compareBy<PersistentManifold>({ it.islandId },
         { it.body0!!.broadphaseHandle!!.uniqueId }, { it.body1!!.broadphaseHandle!!.uniqueId })
+
+/** function object that routes calls to operator <  */
+val persistentManifoldSortPredicate = compareBy<PersistentManifold>({ it.islandId })

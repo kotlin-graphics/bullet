@@ -36,6 +36,7 @@ class DispatcherInfo {
     var allowedCcdPenetration = 0.04f
     var useConvexConservativeDistanceUtil = false
     var convexConservativeDistanceThreshold = 0f
+    var deterministicOverlappingPairs = true
 }
 
 enum class DispatcherQueryType { Invalid, CONTACT_POINT_ALGORITHMS, CLOSEST_POINT_ALGORITHMS }
