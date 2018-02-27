@@ -209,8 +209,10 @@ class SimulationIslandManager {
 
                 assert(colObj0.islandTag == islandId || colObj0.islandTag == -1)
                 if (colObj0.islandTag == islandId)
-                    if (colObj0.activationState == ACTIVE_TAG) allSleeping = false
-                    else if (colObj0.activationState == DISABLE_DEACTIVATION) allSleeping = false
+                    if (colObj0.activationState == ACTIVE_TAG || colObj0.activationState == DISABLE_DEACTIVATION) {
+                        allSleeping = false
+                        break
+                    }
             }
             if (allSleeping)
                 for (idx in startIslandIndex until endIslandIndex) {
