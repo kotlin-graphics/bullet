@@ -247,9 +247,10 @@ abstract class ConvexShape : CollisionShape() {
             val vec = localDirOrg * localScaling
 
             val p = FloatArray(1)
-            val ptIndex = vec.maxDot(points, numPoints, p)
+            var ptIndex = vec.maxDot(points, numPoints, p)
             var maxDot = p[0]
             assert(ptIndex >= 0)
+            if(ptIndex < 0) ptIndex = 0
             return points[ptIndex] * localScaling   // supVec
         }
     }
