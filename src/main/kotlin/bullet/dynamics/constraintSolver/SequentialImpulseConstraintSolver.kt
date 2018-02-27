@@ -775,7 +775,7 @@ class SequentialImpulseConstraintSolver : ConstraintSolver() {
         val numConstraintPool = tmpSolverContactConstraintPool.size
         val numFrictionPool = tmpSolverContactFrictionConstraintPool.size
 
-        if (infoGlobal.solverMode has Sm.RANDMIZE_ORDER) {
+        if (infoGlobal.solverMode has Sm.RANDOMIZE_ORDER) {
 
             for (j in 0 until numNonContactPool) {
                 val tmp = orderNonContactConstraintPool[j]
