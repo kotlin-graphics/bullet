@@ -24,7 +24,17 @@ import bullet.collision.narrowPhaseCollision.ContactPointFlags as CPF
 
 typealias ContactAddedCallback = (ManifoldPoint, CollisionObjectWrapper, Int, Int, CollisionObjectWrapper, Int, Int) -> Boolean
 /** This is to allow MaterialCombiner/Custom Friction/Restitution values    */
-var contactAddedCallback: ContactAddedCallback? = null
+var gContactAddedCallback: ContactAddedCallback? = null
+
+// These callbacks are used to customize the algorith that combine restitution, friction, damping, Stiffness
+typealias CalculateCombinedCallback = (CollisionObject?, CollisionObject?) -> Float
+
+var gCalculateCombinedRestitutionCallback = ManifoldResult.Companion::calculateCombinedRestitution
+var gCalculateCombinedFrictionCallback = ManifoldResult.Companion::calculateCombinedFriction
+var gCalculateCombinedRollingFrictionCallback = ManifoldResult.Companion::calculateCombinedRollingFriction
+var gCalculateCombinedSpinningFrictionCallback = ManifoldResult.Companion::calculateCombinedSpinningFriction
+var gCalculateCombinedContactDampingCallback = ManifoldResult.Companion::calculateCombinedContactDamping
+var gCalculateCombinedContactStiffnessCallback = ManifoldResult.Companion::calculateCombinedContactStiffness
 
 /** ManifoldResult is a helper class to manage  contact results.    */
 open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
@@ -90,14 +100,14 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
 
         var insertIndex = manifold.getCacheEntry(newPt)
 
-        newPt.combinedFriction = calculateCombinedFriction(co0, co1)
-        newPt.combinedRestitution = calculateCombinedRestitution(co0, co1)
-        newPt.combinedRollingFriction = calculateCombinedRollingFriction(co0, co1)
-        newPt.combinedSpinningFriction = calculateCombinedSpinningFriction(co0, co1)
+        newPt.combinedFriction = gCalculateCombinedFrictionCallback(co0, co1)
+        newPt.combinedRestitution = gCalculateCombinedRestitutionCallback(co0, co1)
+        newPt.combinedRollingFriction = gCalculateCombinedRollingFrictionCallback(co0, co1)
+        newPt.combinedSpinningFriction = gCalculateCombinedSpinningFrictionCallback(co0, co1)
 
         if (co0.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i || co1.collisionFlags has CF.HAS_CONTACT_STIFFNESS_DAMPING.i) {
-            newPt.combinedContactDamping1 = calculateCombinedContactDamping(co0, co1)
-            newPt.combinedContactStiffness1 = calculateCombinedContactStiffness(co0, co1)
+            newPt.combinedContactDamping1 = gCalculateCombinedContactDampingCallback(co0, co1)
+            newPt.combinedContactStiffness1 = gCalculateCombinedContactStiffnessCallback(co0, co1)
             newPt.contactPointFlags = newPt.contactPointFlags or CPF.CONTACT_STIFFNESS_DAMPING.i
         }
         if (co0.collisionFlags has CF.HAS_FRICTION_ANCHOR.i || co1.collisionFlags has CF.HAS_FRICTION_ANCHOR.i)
@@ -126,7 +136,7 @@ open class ManifoldResult : DiscreteCollisionDetectorInterface.Result {
             insertIndex = manifold.addManifoldPoint(newPt)
 
         //User can override friction and/or restitution
-        contactAddedCallback?.let {
+        gContactAddedCallback?.let {
             //and if either of the two bodies requires custom material
             if (co0.collisionFlags has CF.CUSTOM_MATERIAL_CALLBACK.i || co1.collisionFlags has CF.CUSTOM_MATERIAL_CALLBACK.i) {
                 //experimental feature info, for per-triangle material etc.

@@ -42,13 +42,13 @@ val DISABLE_SIMULATION = 5
  *  They can be added to the CollisionWorld.  */
 open class CollisionObject {
 
-    protected val _worldTransform = Transform().apply { setIdentity() }
+    protected val worldTransform_ = Transform().apply { setIdentity() }
     fun setWorldTransform(worldTrans: Transform) {
         updateRevision++
-        _worldTransform put worldTrans
+        worldTransform_ put worldTrans
     }
 
-    fun getWorldTransform() = _worldTransform
+    fun getWorldTransform() = worldTransform_
 
 
     /** interpolationWorldTransform is used for CCD and interpolation

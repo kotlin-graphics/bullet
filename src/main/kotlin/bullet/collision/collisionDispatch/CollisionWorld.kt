@@ -678,62 +678,78 @@ open class CollisionWorld
                         }
             } else if (collisionShape.isConcave) {
 
+                // ConvexCast::CastResult
+                class BridgeTriangleRaycastCallback(from: Vec3, to: Vec3, val resultCallback: CollisionWorld.RayResultCallback,
+                                                    val collisionObject: CollisionObject?, val triangleMesh: ConcaveShape,
+                                                    val colObjWorldTransform: Transform)
+                    : TriangleRaycastCallback(from, to, resultCallback.flags) {
+
+                    override fun reportHit(hitNormalLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int): Float {
+                        val shapeInfo = CollisionWorld.LocalShapeInfo(partId, triangleIndex)
+                        val hitNormalWorld = colObjWorldTransform.basis * hitNormalLocal
+                        val rayResult = CollisionWorld.LocalRayResult(collisionObject, shapeInfo, hitNormalWorld, hitFraction)
+                        val normalInWorldSpace = true
+                        return resultCallback.addSingleResult(rayResult, normalInWorldSpace)
+                    }
+                }
+
                 val worldTocollisionObject = colObjWorldTransform.inverse()
                 val rayFromLocal = worldTocollisionObject * rayFromTrans.origin
                 val rayToLocal = worldTocollisionObject * rayToTrans.origin
 
                 BT_PROFILE("rayTestConcave")
-                if (collisionShape.shapeType == Bnt.TRIANGLE_MESH_SHAPE_PROXYTYPE) {
-                    // ConvexCast::CastResult
-                    class BridgeTriangleRaycastCallback(from: Vec3, to: Vec3, val resultCallback: CollisionWorld.RayResultCallback,
-                                                        val collisionObject: CollisionObject?, val triangleMesh: ConcaveShape,
-                                                        val colObjWorldTransform: Transform)
-                        : TriangleRaycastCallback(from, to, resultCallback.flags) {
+                when (collisionShape.shapeType) {
+                    Bnt.TRIANGLE_MESH_SHAPE_PROXYTYPE -> {
+                        // optimized version for btBvhTriangleMeshShape
+                        val triangleMesh = collisionShape as BvhTriangleMeshShape
 
-                        override fun reportHit(hitNormalLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int): Float {
-                            val shapeInfo = CollisionWorld.LocalShapeInfo(partId, triangleIndex)
-                            val hitNormalWorld = colObjWorldTransform.basis * hitNormalLocal
-                            val rayResult = CollisionWorld.LocalRayResult(collisionObject, shapeInfo, hitNormalWorld, hitFraction)
-                            val normalInWorldSpace = true
-                            return resultCallback.addSingleResult(rayResult, normalInWorldSpace)
-                        }
+                        val rcb = BridgeTriangleRaycastCallback(rayFromLocal, rayToLocal, resultCallback,
+                                collisionObjectWrap.collisionObject, triangleMesh, colObjWorldTransform)
+                        rcb.hitFraction = resultCallback.closestHitFraction
+                        triangleMesh.performRaycast(rcb, rayFromLocal, rayToLocal)
                     }
-                    // optimized version for btBvhTriangleMeshShape
-                    val triangleMesh = collisionShape as BvhTriangleMeshShape
+                    Bnt.SCALED_TRIANGLE_MESH_SHAPE_PROXYTYPE -> {
+                        // optimized version for ScaledBvhTriangleMeshShape
+                        val scaledTriangleMesh = collisionShape as ScaledBvhTriangleMeshShape
+                        val triangleMesh = scaledTriangleMesh.childShape as BvhTriangleMeshShape
 
-                    val rcb = BridgeTriangleRaycastCallback(rayFromLocal, rayToLocal, resultCallback,
-                            collisionObjectWrap.collisionObject, triangleMesh, colObjWorldTransform)
-                    rcb.hitFraction = resultCallback.closestHitFraction
-                    triangleMesh.performRaycast(rcb, rayFromLocal, rayToLocal)
-                } else {
-                    //generic (slower) case
-                    val concaveShape = collisionShape as ConcaveShape
+                        // scale the ray positions
+                        val scale = scaledTriangleMesh.localScaling_
+                        val rayFromLocalScaled = rayFromLocal / scale
+                        val rayToLocalScaled = rayToLocal / scale
 
-                    val worldTocollisionObject = colObjWorldTransform.inverse()
-
-                    val rayFromLocal = worldTocollisionObject * rayFromTrans.origin
-                    val rayToLocal = worldTocollisionObject * rayToTrans.origin
-
-                    class BridgeTriangleRaycastCallback_(from: Vec3, to: Vec3, val resultCallback: RayResultCallback,
-                                                         val collisionObject: CollisionObject, val triangleMesh: ConcaveShape,
-                                                         val colObjWorldTransform: Transform) :
-                            TriangleRaycastCallback(from, to, resultCallback.flags) {
-
-                        override fun reportHit(hitNormalLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int): Float {
-
-                            val shapeInfo = CollisionWorld.LocalShapeInfo(partId, triangleIndex)
-                            val hitNormalWorld = colObjWorldTransform.basis * hitNormalLocal
-                            val rayResult = CollisionWorld.LocalRayResult(collisionObject, shapeInfo, hitNormalWorld, hitFraction)
-                            return resultCallback.addSingleResult(rayResult, normalInWorldSpace = true)
-                        }
+                        // perform raycast in the underlying btBvhTriangleMeshShape
+                        val rcb = BridgeTriangleRaycastCallback (rayFromLocalScaled, rayToLocalScaled, resultCallback,
+                                collisionObjectWrap.collisionObject, triangleMesh, colObjWorldTransform)
+                        rcb.hitFraction = resultCallback.closestHitFraction
+                        triangleMesh.performRaycast(rcb, rayFromLocalScaled, rayToLocalScaled)
                     }
 
-                    val rcb = BridgeTriangleRaycastCallback_(rayFromLocal, rayToLocal, resultCallback,
-                            collisionObjectWrap.collisionObject!!, concaveShape, colObjWorldTransform)
-                    rcb.hitFraction = resultCallback.closestHitFraction
-                    val rayAabbMinLocal = rayFromLocal min rayToLocal
-                    val rayAabbMaxLocal = rayFromLocal max rayToLocal
-                    concaveShape.processAllTriangles(rcb, rayAabbMinLocal, rayAabbMaxLocal)
+                    else -> {
+                        //generic (slower) case
+                        val concaveShape = collisionShape as ConcaveShape
+
+                        class BridgeTriangleRaycastCallback_(from: Vec3, to: Vec3, val resultCallback: RayResultCallback,
+                                                             val collisionObject: CollisionObject, val triangleMesh: ConcaveShape,
+                                                             val colObjWorldTransform: Transform) :
+                                TriangleRaycastCallback(from, to, resultCallback.flags) {
+
+                            override fun reportHit(hitNormalLocal: Vec3, hitFraction: Float, partId: Int, triangleIndex: Int): Float {
+
+                                val shapeInfo = CollisionWorld.LocalShapeInfo(partId, triangleIndex)
+                                val hitNormalWorld = colObjWorldTransform.basis * hitNormalLocal
+                                val rayResult = CollisionWorld.LocalRayResult(collisionObject, shapeInfo, hitNormalWorld, hitFraction)
+                                return resultCallback.addSingleResult(rayResult, normalInWorldSpace = true)
+                            }
+                        }
+
+                        val rcb = BridgeTriangleRaycastCallback_(rayFromLocal, rayToLocal, resultCallback,
+                                collisionObjectWrap.collisionObject!!, concaveShape, colObjWorldTransform)
+                        rcb.hitFraction = resultCallback.closestHitFraction
+                        val rayAabbMinLocal = rayFromLocal min rayToLocal
+                        val rayAabbMaxLocal = rayFromLocal max rayToLocal
+                        concaveShape.processAllTriangles(rcb, rayAabbMinLocal, rayAabbMaxLocal)
+                    }
                 }
             } else {
                 BT_PROFILE("rayTestCompound")

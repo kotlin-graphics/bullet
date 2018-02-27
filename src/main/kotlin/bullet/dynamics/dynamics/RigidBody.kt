@@ -115,10 +115,10 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     private var optionalMotionState = constructionInfo.motionState
 
     init {
-        if (optionalMotionState != null) optionalMotionState!!.getWorldTransform(_worldTransform)
-        else _worldTransform put constructionInfo.startWorldTransform
+        if (optionalMotionState != null) optionalMotionState!!.getWorldTransform(worldTransform_)
+        else worldTransform_ put constructionInfo.startWorldTransform
 
-        _interpolationWorldTransform put _worldTransform
+        _interpolationWorldTransform put worldTransform_
         _interpolationLinearVelocity put 0f
         _interpolationAngularVelocity put 0f
 
@@ -204,20 +204,20 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
 
     /** continuous collision detection needs prediction */
     fun predictIntegratedTransform(timeStep: Float, predictedTransform: Transform) =
-            TransformUtil.integrateTransform(_worldTransform, _linearVelocity, _angularVelocity, timeStep, predictedTransform)
+            TransformUtil.integrateTransform(worldTransform_, _linearVelocity, _angularVelocity, timeStep, predictedTransform)
 
     fun saveKinematicState(timeStep: Float) {
         //todo: clamp to some (user definable) safe minimum timestep, to limit maximum angular/linear velocities
         if (timeStep != 0f) {
             //if we use motionstate to synchronize world transforms, get the new kinematic/animated world transform
-            optionalMotionState?.getWorldTransform(_worldTransform)
+            optionalMotionState?.getWorldTransform(worldTransform_)
             val linVel = Vec3()
             val angVel = Vec3()
 
-            TransformUtil.calculateVelocity(_interpolationWorldTransform, _worldTransform, timeStep, _linearVelocity, _angularVelocity)
+            TransformUtil.calculateVelocity(_interpolationWorldTransform, worldTransform_, timeStep, _linearVelocity, _angularVelocity)
             _interpolationLinearVelocity put _linearVelocity
             _interpolationAngularVelocity put _angularVelocity
-            _interpolationWorldTransform put _worldTransform
+            _interpolationWorldTransform put worldTransform_
             //printf("angular = %f %f %f\n",m_angularVelocity.getX(),m_angularVelocity.getY(),m_angularVelocity.getZ());
         }
     }
@@ -313,10 +313,10 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     }
 
     fun setCenterOfMassTransform(xform: Transform) {
-        _interpolationWorldTransform put if (isKinematicObject) _worldTransform else xform
+        _interpolationWorldTransform put if (isKinematicObject) worldTransform_ else xform
         _interpolationLinearVelocity put _linearVelocity
         _interpolationAngularVelocity put _angularVelocity
-        _worldTransform put xform
+        worldTransform_ put xform
         updateInertiaTensor()
     }
 
@@ -351,17 +351,17 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         totalTorque put 0f
     }
 
-    fun updateInertiaTensor() = invInertiaTensorWorld put _worldTransform.basis.scaled(invInertiaLocal) * _worldTransform.basis.transpose()
+    fun updateInertiaTensor() = invInertiaTensorWorld put worldTransform_.basis.scaled(invInertiaLocal) * worldTransform_.basis.transpose()
 
-    val centerOfMassPosition get() = _worldTransform.origin
+    val centerOfMassPosition get() = worldTransform_.origin
     val orientation
         get():Quat {
             val orn = Quat()
-            _worldTransform.basis.getRotation(orn)
+            worldTransform_.basis.getRotation(orn)
             return orn
         }
 
-    val centerOfMassTransform get() = _worldTransform
+    val centerOfMassTransform get() = worldTransform_
 
 
     fun getVelocityInLocalPoint(relPos: Vec3) =
@@ -370,9 +370,9 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
     // for kinematic objects, we could also use use:
     //		return 	(m_worldTransform(rel_pos) - m_interpolationWorldTransform(rel_pos)) / m_kinematicTimeStep;
 
-    fun translate(v: Vec3) = _worldTransform.origin plusAssign v
+    fun translate(v: Vec3) = worldTransform_.origin plusAssign v
 
-    fun getAabb(aabbMin: Vec3, aabbMax: Vec3) = collisionShape!!.getAabb(_worldTransform, aabbMin, aabbMax)
+    fun getAabb(aabbMin: Vec3, aabbMax: Vec3) = collisionShape!!.getAabb(worldTransform_, aabbMin, aabbMax)
 
     fun computeImpulseDenominator(pos: Vec3, normal: Vec3): Float {
         val r0 = pos - centerOfMassPosition
@@ -412,7 +412,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
 
     fun setMotionState(motionState: MotionState?) {
         optionalMotionState = motionState
-        optionalMotionState?.getWorldTransform(_worldTransform)
+        optionalMotionState?.getWorldTransform(worldTransform_)
     }
 
     //for experimental overriding of friction/contact solver func
@@ -470,7 +470,7 @@ class RigidBody(constructionInfo: RigidBodyConstructionInfo) : CollisionObject()
         val inertiaLocal = localInertia
         val w0 = _angularVelocity
 
-        val i = _worldTransform.basis.scaled(inertiaLocal) * _worldTransform.basis.transpose()
+        val i = worldTransform_.basis.scaled(inertiaLocal) * worldTransform_.basis.transpose()
 
         /*  use newtons method to find implicit solution for new angular velocity (w')
             f(w') = -(T*step + Iw) + Iw' + w' + w'xIw'*step = 0

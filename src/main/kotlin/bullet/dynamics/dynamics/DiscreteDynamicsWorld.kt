@@ -179,7 +179,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
 
                 for (p in 0 until manifold.numContacts) {
                     val pt = manifold.getContactPoint(p)
-                    val combinedRestitution = ManifoldResult.calculateCombinedRestitution(body0, body1)
+                    val combinedRestitution = gCalculateCombinedRestitutionCallback(body0, body1)
                     if (combinedRestitution > 0 && pt.appliedImpulse != 0f)
                     //if (pt.getDistance()>0 && combinedRestitution>0 && pt.m_appliedImpulse != 0.f)
                     {
@@ -374,7 +374,7 @@ constructor(dispatcher: Dispatcher?, pairCache: BroadphaseInterface, constraintS
                             val index = manifold.addManifoldPoint(newPoint, isPredictive = true)
                             manifold.getContactPoint(index).apply {
                                 combinedRestitution = 0f
-                                combinedFriction = ManifoldResult.calculateCombinedFriction(body, sweepResults.hitCollisionObject!!)
+                                combinedFriction = gCalculateCombinedFrictionCallback(body, sweepResults.hitCollisionObject!!)
                                 positionWorldOnA put body.getWorldTransform().origin
                                 positionWorldOnB put worldPointB
                             }

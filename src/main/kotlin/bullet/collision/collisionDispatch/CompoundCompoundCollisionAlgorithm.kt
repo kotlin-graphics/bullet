@@ -20,7 +20,6 @@ import bullet.BT_PROFILE
 import bullet.collision.broadphaseCollision.*
 import bullet.collision.collisionShapes.CompoundShape
 import bullet.collision.narrowPhaseCollision.PersistentManifold
-import bullet.i
 import bullet.linearMath.Transform
 import bullet.linearMath.Vec3
 import bullet.linearMath.testAabbAgainstAabb2
@@ -36,14 +35,17 @@ class CompoundCompoundCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo,
         CompoundCollisionAlgorithm(ci, body0Wrap, body1Wrap, isSwapped) {
 
     val childCollisionAlgorithmCache = HashedSimplePairCache()
-    val removePairs = ArrayList<Long>()
+    val removePairs = ArrayList<SimplePair>()
     // to keep track of changes, so that childAlgorithm array can be updated
     var compoundShapeRevision0 = (body0Wrap.collisionShape as CompoundShape).updateRevision
     var compoundShapeRevision1 = (body1Wrap.collisionShape as CompoundShape).updateRevision
 
     override fun removeChildAlgorithms() {
-        childCollisionAlgorithmCache.values.filterNotNull().map { dispatcher!!.freeCollisionAlgorithm(it as CollisionAlgorithm) }
-        childCollisionAlgorithmCache.clear()
+        val pairs = childCollisionAlgorithmCache.overlappingPairArray.data
+        val numChildren = pairs.size
+        for (i in 0 until numChildren)
+            pairs[i]?.userPointer?.let { dispatcher!!.freeCollisionAlgorithm(it as CollisionAlgorithm) }
+        childCollisionAlgorithmCache.removeAllPairs()
     }
 
     override fun processCollision(body0Wrap: CollisionObjectWrapper, body1Wrap: CollisionObjectWrapper, dispatchInfo: DispatcherInfo, resultOut: ManifoldResult) {
@@ -71,17 +73,22 @@ class CompoundCompoundCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo,
             note that we should actually recursively traverse all children, CompoundShape can nested more then 1 level
             deep
             so we should add a 'refreshManifolds' in the CollisionAlgorithm */
-        val manifoldArray = ArrayList<PersistentManifold>()
-        childCollisionAlgorithmCache.values.filterNotNull().forEach {
-            (it as CollisionAlgorithm).getAllContactManifolds(manifoldArray)
-            manifoldArray.filter { it.numContacts != 0 }.forEach {
-                with(resultOut) {
-                    manifold = it
-                    refreshContactPoints()
-                    manifold = null
+        run {
+            val manifoldArray = ArrayList<PersistentManifold>()
+            val pairs = childCollisionAlgorithmCache.overlappingPairArray.data
+            for (i in 0 until pairs.size)
+                pairs[i]?.userPointer?.let {
+                    val algo = it as CollisionAlgorithm
+                    algo.getAllContactManifolds(manifoldArray)
+                    manifoldArray.filter { it.numContacts != 0 }.forEach {
+                        with(resultOut) {
+                            manifold = it
+                            refreshContactPoints()
+                            manifold = null
+                        }
+                    }
+                    manifoldArray.clear()
                 }
-            }
-            manifoldArray.clear()
         }
 
         val callback = CompoundCompoundLeafCallback(col0ObjWrap, col1ObjWrap, dispatcher!!, dispatchInfo, resultOut,
@@ -97,48 +104,47 @@ class CompoundCompoundCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo,
         assert(removePairs.isEmpty())
 
         // iterate over all children, perform an AABB check inside ProcessChildShape
-        val pairs = childCollisionAlgorithmCache.entries
+        val pairs = childCollisionAlgorithmCache.overlappingPairArray.data
 
-        manifoldArray // should be clear, reuse
+        // should be clear, reuse
+        assert(manifoldArray.isEmpty())
 
         val aabbMin0 = Vec3()
         val aabbMax0 = Vec3()
         val aabbMin1 = Vec3()
         val aabbMax1 = Vec3()
 
-        pairs.filter { it.value != null }.forEach {
-            val algo = it.value as CollisionAlgorithm
+        for (i in 0 until pairs.size)
+            pairs[i]?.let { pair ->
+                pair.userPointer?.let {
 
-            val indexA = (it.key ushr 32).i
-            val childShape0 = compoundShape0.getChildShape(indexA)
-            val orgTrans0 = col0ObjWrap.worldTransform
-            val orgInterpolationTrans0 = col0ObjWrap.worldTransform
-            val childTrans0 = compoundShape0.getChildTransform(indexA)
-            val newChildWorldTrans0 = orgTrans0 * childTrans0
-            childShape0.getAabb(newChildWorldTrans0, aabbMin0, aabbMax0)
+                    val algo = it as CollisionAlgorithm
 
-            val thresholdVec = Vec3(resultOut.closestPointDistanceThreshold)
-            aabbMin0 -= thresholdVec
-            aabbMax0 += thresholdVec
+                    val childShape0 = compoundShape0.getChildShape(pair.indexA)
+                    val childTrans0 = compoundShape0.getChildTransform(pair.indexA)
+                    val newChildWorldTrans0 = col0ObjWrap.worldTransform * childTrans0
+                    childShape0.getAabb(newChildWorldTrans0, aabbMin0, aabbMax0)
 
-            val indexB = (it.key and 0xffffffff).i
-            val childShape1 = compoundShape1.getChildShape(indexB)
-            val orgTrans1 = col1ObjWrap.worldTransform
-            val orgInterpolationTrans1 = col1ObjWrap.worldTransform
-            val childTrans1 = compoundShape1.getChildTransform(indexB)
-            val newChildWorldTrans1 = orgTrans1 * childTrans1
-            childShape1.getAabb(newChildWorldTrans1, aabbMin1, aabbMax1)
+                    val thresholdVec = Vec3(resultOut.closestPointDistanceThreshold)
+                    aabbMin0 -= thresholdVec
+                    aabbMax0 += thresholdVec
 
-            aabbMin1 -= thresholdVec
-            aabbMax1 += thresholdVec
+                    val childShape1 = compoundShape1.getChildShape(pair.indexB)
+                    val childTrans1 = compoundShape1.getChildTransform(pair.indexB)
+                    val newChildWorldTrans1 = col1ObjWrap.worldTransform * childTrans1
+                    childShape1.getAabb(newChildWorldTrans1, aabbMin1, aabbMax1)
 
-            if (!testAabbAgainstAabb2(aabbMin0, aabbMax0, aabbMin1, aabbMax1)) {
-                dispatcher!!.freeCollisionAlgorithm(algo)
-                removePairs += it.key
+                    aabbMin1 -= thresholdVec
+                    aabbMax1 += thresholdVec
+
+                    if (!testAabbAgainstAabb2(aabbMin0, aabbMax0, aabbMin1, aabbMax1)) {
+                        dispatcher!!.freeCollisionAlgorithm(algo)
+                        removePairs += SimplePair(pair.indexA, pair.indexB)
+                    }
+                }
+
             }
-        }
-        for (i in 0 until removePairs.size)
-            childCollisionAlgorithmCache -= removePairs[i]
+        removePairs.forEach { childCollisionAlgorithmCache.removeOverlappingPair(it.indexA, it.indexB) }
         removePairs.clear()
     }
 
@@ -148,7 +154,9 @@ class CompoundCompoundCollisionAlgorithm(ci: CollisionAlgorithmConstructionInfo,
     }
 
     override fun getAllContactManifolds(manifoldArray: ArrayList<PersistentManifold>) {
-        childCollisionAlgorithmCache.values.filterNotNull().forEach { (it as CollisionAlgorithm).getAllContactManifolds(manifoldArray) }
+        val pairs = childCollisionAlgorithmCache.overlappingPairArray
+        for (i in 0 until pairs.size)
+            pairs[i]?.userPointer?.let { (it as CollisionAlgorithm).getAllContactManifolds(manifoldArray) }
     }
 
     class CreateFunc : CollisionAlgorithmCreateFunc() {
@@ -279,9 +287,9 @@ class CompoundCompoundLeafCallback(val compound1ObjWrap: CollisionObjectWrapper,
             val colAlgo = when {
                 resultOut.closestPointDistanceThreshold > 0 ->
                     dispatcher.findAlgorithm(compoundWrap0, compoundWrap1, null, Dqt.CLOSEST_POINT_ALGORITHMS)
-                else -> childAlgorithmsCache[childIndex0, childIndex1]?.let { it as CollisionAlgorithm } ?:
-                        dispatcher.findAlgorithm(compoundWrap0, compoundWrap1, sharedManifold, Dqt.CONTACT_POINT_ALGORITHMS)
-                                .also { childAlgorithmsCache[childIndex0, childIndex1] = it }
+                else -> childAlgorithmsCache.findPair(childIndex0, childIndex1)?.let { it.userPointer as CollisionAlgorithm }
+                        ?: dispatcher.findAlgorithm(compoundWrap0, compoundWrap1, sharedManifold, Dqt.CONTACT_POINT_ALGORITHMS)
+                                .also { childAlgorithmsCache.addOverlappingPair(childIndex0, childIndex1)!!.userPointer = it }
             }!!
 
             val tmpWrap0 = resultOut.body0Wrap
